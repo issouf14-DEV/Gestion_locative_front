@@ -28,10 +28,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
-  // Skip non-GET and API/auth requests
+  // Skip non-GET, API, extensions and auth requests
   if (request.method !== 'GET') return;
+  if (!request.url.startsWith('http')) return;
   if (request.url.includes('/api/')) return;
   if (request.url.includes('accounts.google.com')) return;
+  if (request.url.includes('chrome-extension')) return;
 
   event.respondWith(
     fetch(request)
