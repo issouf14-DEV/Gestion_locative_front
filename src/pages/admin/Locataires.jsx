@@ -1,0 +1,918 @@
+import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { Plus, Search, Eye, CheckCircle, XCircle, Send, Download, Users, UserCheck, UserX, Banknote, Trash2, Pencil } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
+} from '@/components/ui/dialog';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
+} from '@/components/ui/table';
+import PageHeader from '@/components/common/PageHeader';
+import StatCard from '@/components/common/StatCard';
+import EmptyState from '@/components/common/EmptyState';
+import { useUsers, useCreateUser, useUpdateUserStatus, useDeleteUser, useUpdateUser } from '@/lib/api/queries/users';
+import ConfirmDialog from '@/components/common/ConfirmDialog';
+import { useMaisons } from '@/lib/api/queries/properties';
+import { useCreateLocation, useLocationsActives } from '@/lib/api/queries/rentals';
+import { useEnvoyerNotifTousLocataires, useEnvoyerNotification } from '@/lib/api/queries/notifications';
+import { cleanPhoneForWhatsApp } from '@/lib/utils/whatsapp';
+import { useEncaisserLoyer } from '@/lib/api/queries/payments';
+import { toast } from 'sonner';
+import { useFactures } from '@/lib/api/queries/billing';
+import { formatCurrency, formatDate, MOIS, getCurrentMoisAnnee } from '@/lib/utils/formatters';
+
+const locataireSchema = z.object({
+  nom: z.string().min(2, 'Nom requis'),
+  prenoms: z.string().min(2, 'Prénom(s) requis'),
+  email: z.string().email('Email invalide'),
+  telephone: z.string().min(8, 'Téléphone requis'),
+  password: z.string().min(8, 'Mot de passe min. 8 caractères'),
+  password2: z.string().min(1, 'Confirmation requise'),
+}).refine(d => d.password === d.password2, {
+  message: 'Les mots de passe ne correspondent pas',
+  path: ['password2'],
+});
+
+const notifSchema = z.object({
+  titre: z.string().min(2, 'Titre requis'),
+  message: z.string().min(5, 'Message requis'),
+  type_notification: z.string().default('INFO'),
+});
+
+const editLocataireSchema = z.object({
+  nom: z.string().min(2, 'Nom requis'),
+  prenoms: z.string().min(2, 'Prénom(s) requis'),
+  email: z.string().email('Email invalide'),
+  telephone: z.string().min(8, 'Téléphone requis'),
+});
+
+const paiementSchema = z.object({
+  montant: z.string().min(1, 'Montant requis'),
+  date_paiement: z.string().min(1, 'Date requise'),
+  mode_paiement: z.string().min(1, 'Mode requis'),
+});
+
+// ─── Dialogs ────────────────────────────────────────────────────────────────
+
+function CreateLocataireDialog({ open, onOpenChange }) {
+  const { mutate: createUser, isPending } = useCreateUser();
+  const { data: maisonsData } = useMaisons({ statut: 'DISPONIBLE' });
+  const { mutate: createLocation } = useCreateLocation();
+  const maisons = maisonsData?.data?.results || maisonsData?.results || maisonsData?.data || [];
+
+  const [maisonId, setMaisonId] = useState('');
+  const [dateDebut, setDateDebut] = useState('');
+  const [dureeMois, setDureeMois] = useState('12');
+  const [loyer, setLoyer] = useState('');
+
+  const { register, handleSubmit, reset, formState: { errors } } = useForm({
+    resolver: zodResolver(locataireSchema),
+  });
+
+  const onSubmit = (data) => {
+    createUser({ ...data, role: 'LOCATAIRE' }, {
+      onSuccess: (res) => {
+        const userId = res.data?.data?.id || res.data?.id;
+        if (maisonId && userId && dateDebut && loyer) {
+          createLocation({
+            locataire: userId, maison: maisonId, date_debut: dateDebut,
+            duree_mois: Number(dureeMois), loyer_mensuel: Number(loyer),
+          });
+        }
+        reset(); onOpenChange(false);
+      },
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Ajouter un locataire</DialogTitle></DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Nom *</Label>
+                <Input placeholder="Dupont" {...register('nom')} />
+                {errors.nom && <p className="text-xs text-red-500">{errors.nom.message}</p>}
+              </div>
+              <div className="space-y-1">
+                <Label>Prénom(s) *</Label>
+                <Input placeholder="Jean" {...register('prenoms')} />
+                {errors.prenoms && <p className="text-xs text-red-500">{errors.prenoms.message}</p>}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Email *</Label>
+              <Input type="email" placeholder="jean@exemple.com" {...register('email')} />
+              {errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}
+            </div>
+            <div className="space-y-1">
+              <Label>Téléphone *</Label>
+              <Input placeholder="+225 07 00 00 00 00" {...register('telephone')} />
+              {errors.telephone && <p className="text-xs text-red-500">{errors.telephone.message}</p>}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Mot de passe *</Label>
+                <Input type="password" placeholder="Min. 8 car." {...register('password')} />
+                {errors.password && <p className="text-xs text-red-500">{errors.password.message}</p>}
+              </div>
+              <div className="space-y-1">
+                <Label>Confirmation *</Label>
+                <Input type="password" placeholder="Retaper" {...register('password2')} />
+                {errors.password2 && <p className="text-xs text-red-500">{errors.password2.message}</p>}
+              </div>
+            </div>
+            <div className="border-t pt-3">
+              <p className="text-sm font-medium text-navy-800 mb-3">Affecter à une maison (optionnel)</p>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label>Maison disponible</Label>
+                  <Select value={maisonId} onValueChange={setMaisonId}>
+                    <SelectTrigger><SelectValue placeholder="Sélectionner une maison..." /></SelectTrigger>
+                    <SelectContent>
+                      {maisons.map(m => (
+                        <SelectItem key={m.id} value={String(m.id)}>{m.titre} — {formatCurrency(m.prix)}/mois</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {maisonId && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label>Date de début</Label>
+                        <Input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Durée (mois)</Label>
+                        <Input type="number" value={dureeMois} onChange={e => setDureeMois(e.target.value)} min="1" />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Loyer mensuel (FCFA)</Label>
+                      <Input type="number" placeholder="150000" value={loyer} onChange={e => setLoyer(e.target.value)} />
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
+            <Button type="submit" variant="navy" disabled={isPending}>{isPending ? 'Création...' : 'Créer le locataire'}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function NotifDialog({ open, onOpenChange, selectedIds, locataires }) {
+  const { mutate: sendAll, isPending: isSendingAll } = useEnvoyerNotifTousLocataires();
+  const { mutate: sendSingle, isPending: isSendingSingle } = useEnvoyerNotification();
+  const { register, handleSubmit, reset, formState: { errors } } = useForm({
+    resolver: zodResolver(notifSchema), defaultValues: { type_notification: 'INFO' },
+  });
+  const [destinataire, setDestinataire] = useState('tous');
+  const [canal, setCanal] = useState('IN_APP');
+  const [searchDest, setSearchDest] = useState('');
+
+  // Get phone from locataire object (check all possible field names)
+  const getPhone = (l) => l.telephone || l.phone || l.tel || l.numero_telephone || l.phone_number || '';
+
+  // WhatsApp fallback: open wa.me directly
+  const openWhatsAppDirect = (locatairesList, titre, message) => {
+    const text = `*${titre}*\n\n${message}\n\n_Gestion Locative_`;
+    let opened = 0;
+    let noPhone = 0;
+    locatairesList.forEach(l => {
+      const phone = getPhone(l);
+      if (phone) {
+        const cleanPhone = cleanPhoneForWhatsApp(phone);
+        window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`, '_blank');
+        opened++;
+      } else {
+        noPhone++;
+      }
+    });
+    if (opened > 0) {
+      toast.success(`WhatsApp ouvert pour ${opened} locataire(s)`);
+      if (noPhone > 0) toast.warning(`${noPhone} locataire(s) sans numero de telephone`);
+    } else {
+      toast.error('Aucun numero de telephone disponible pour les locataires selectionnes');
+    }
+  };
+
+  const getTargetLocataires = () => {
+    if (destinataire === 'tous') return locataires || [];
+    if (destinataire === 'selection') return (locataires || []).filter(l => (selectedIds || []).includes(l.id));
+    return (locataires || []).filter(l => String(l.id) === destinataire);
+  };
+
+  // Filtered locataires for search
+  const filteredLocataires = useMemo(() => {
+    const list = locataires || [];
+    if (!searchDest.trim()) return list;
+    const q = searchDest.toLowerCase().trim();
+    return list.filter(l => {
+      const name = `${l.prenoms || ''} ${l.nom || ''}`.toLowerCase();
+      const email = (l.email || '').toLowerCase();
+      const phone = getPhone(l).toLowerCase();
+      return name.includes(q) || email.includes(q) || phone.includes(q);
+    });
+  }, [locataires, searchDest]);
+
+  // Selected locataire label
+  const selectedLabel = useMemo(() => {
+    if (destinataire === 'tous') return 'Tous les locataires';
+    if (destinataire === 'selection') return `Selection (${(selectedIds || []).length})`;
+    const loc = (locataires || []).find(l => String(l.id) === destinataire);
+    return loc ? `${loc.prenoms} ${loc.nom}` : 'Choisir...';
+  }, [destinataire, locataires, selectedIds]);
+
+  const onSubmit = (data) => {
+    // For WhatsApp: try API first, fallback to direct wa.me
+    if (canal === 'WHATSAPP') {
+      const targets = getTargetLocataires();
+      // If sending to specific locataire(s) and we have phone(s), go direct immediately
+      if (destinataire !== 'tous') {
+        const hasPhones = targets.some(l => getPhone(l));
+        if (hasPhones) {
+          openWhatsAppDirect(targets, data.titre, data.message);
+          reset(); setDestinataire('tous'); setCanal('IN_APP'); setSearchDest(''); onOpenChange(false);
+          return;
+        }
+      }
+      // Try API, fallback to direct
+      const payload = { ...data, canal: 'WHATSAPP' };
+      if (destinataire === 'tous') {
+        sendAll(payload, {
+          onSuccess: () => { reset(); setDestinataire('tous'); setCanal('IN_APP'); setSearchDest(''); onOpenChange(false); },
+          onError: () => { openWhatsAppDirect(targets, data.titre, data.message); onOpenChange(false); },
+        });
+      } else {
+        openWhatsAppDirect(targets, data.titre, data.message);
+        reset(); setDestinataire('tous'); setCanal('IN_APP'); setSearchDest(''); onOpenChange(false);
+      }
+      return;
+    }
+
+    // For IN_APP, EMAIL, TOUS: send via API
+    const payload = { ...data, canal };
+    if (destinataire === 'tous') {
+      sendAll(payload, { onSuccess: () => { reset(); setDestinataire('tous'); setCanal('IN_APP'); setSearchDest(''); onOpenChange(false); } });
+    } else if (destinataire === 'selection') {
+      const ids = selectedIds || [];
+      if (ids.length === 0) return;
+      ids.forEach((id, idx) => {
+        sendSingle({ ...payload, destinataire: id }, {
+          onSuccess: () => { if (idx === ids.length - 1) { reset(); setDestinataire('tous'); setCanal('IN_APP'); setSearchDest(''); onOpenChange(false); } },
+        });
+      });
+    } else {
+      sendSingle({ ...payload, destinataire: Number(destinataire) }, {
+        onSuccess: () => { reset(); setDestinataire('tous'); setCanal('IN_APP'); setSearchDest(''); onOpenChange(false); },
+      });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { reset(); setDestinataire('tous'); setCanal('IN_APP'); setSearchDest(''); } onOpenChange(v); }}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Envoyer une notification</DialogTitle></DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <div className="space-y-4 py-2">
+            {/* Destinataire with search */}
+            <div className="space-y-1">
+              <Label>Destinataire</Label>
+              <div className="border rounded-md">
+                {/* Search input */}
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Rechercher un locataire..."
+                    value={searchDest}
+                    onChange={e => setSearchDest(e.target.value)}
+                    className="w-full h-9 pl-8 pr-3 text-sm bg-transparent border-b focus:outline-none placeholder:text-muted-foreground"
+                  />
+                </div>
+                {/* Selected indicator */}
+                <div className="px-3 py-1.5 bg-muted/30 text-xs text-muted-foreground flex items-center justify-between">
+                  <span>Selectionne : <strong className="text-foreground">{selectedLabel}</strong></span>
+                  {destinataire !== 'tous' && (
+                    <button type="button" onClick={() => setDestinataire('tous')} className="text-muted-foreground hover:text-foreground">
+                      <XCircle className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+                {/* Scrollable list */}
+                <div className="max-h-[160px] overflow-y-auto divide-y">
+                  <button
+                    type="button"
+                    onClick={() => setDestinataire('tous')}
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-muted/50 transition-colors flex items-center gap-2 ${destinataire === 'tous' ? 'bg-navy-50 text-navy-800 font-medium' : ''}`}
+                  >
+                    <Users className="h-3.5 w-3.5 flex-shrink-0" />
+                    Tous les locataires ({(locataires || []).length})
+                  </button>
+                  {selectedIds && selectedIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setDestinataire('selection')}
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-muted/50 transition-colors flex items-center gap-2 ${destinataire === 'selection' ? 'bg-navy-50 text-navy-800 font-medium' : ''}`}
+                    >
+                      <CheckCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                      Selection ({selectedIds.length})
+                    </button>
+                  )}
+                  {filteredLocataires.map(l => (
+                    <button
+                      key={l.id}
+                      type="button"
+                      onClick={() => { setDestinataire(String(l.id)); setSearchDest(''); }}
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-muted/50 transition-colors ${destinataire === String(l.id) ? 'bg-navy-50 text-navy-800 font-medium' : ''}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span>{l.prenoms} {l.nom}</span>
+                        {getPhone(l) && <span className="text-xs text-muted-foreground">{getPhone(l)}</span>}
+                      </div>
+                      <div className="text-xs text-muted-foreground">{l.email}</div>
+                    </button>
+                  ))}
+                  {filteredLocataires.length === 0 && searchDest && (
+                    <div className="px-3 py-4 text-center text-sm text-muted-foreground">Aucun locataire trouve</div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Canal</Label>
+              <Select value={canal} onValueChange={setCanal}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="IN_APP">Application</SelectItem>
+                  <SelectItem value="EMAIL">Email</SelectItem>
+                  <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
+                  <SelectItem value="TOUS">Tous les canaux</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Titre *</Label>
+              <Input placeholder="Objet de la notification" {...register('titre')} />
+              {errors.titre && <p className="text-xs text-red-500">{errors.titre.message}</p>}
+            </div>
+            <div className="space-y-1">
+              <Label>Message *</Label>
+              <textarea className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" placeholder="Votre message..." {...register('message')} />
+              {errors.message && <p className="text-xs text-red-500">{errors.message.message}</p>}
+            </div>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
+            <Button type="submit" variant="navy" disabled={isSendingAll || isSendingSingle}>{(isSendingAll || isSendingSingle) ? 'Envoi...' : 'Envoyer'}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function PaiementDialog({ open, onOpenChange, locataire }) {
+  const { mutate: encaisser, isPending } = useEncaisserLoyer();
+  const { register, handleSubmit, reset, formState: { errors } } = useForm({
+    resolver: zodResolver(paiementSchema),
+    defaultValues: { date_paiement: new Date().toISOString().split('T')[0], mode_paiement: 'ESPECES' },
+  });
+
+  const onSubmit = (data) => {
+    encaisser({ locataire_id: locataire?.id, montant: Number(data.montant), date_paiement: data.date_paiement, mode_paiement: data.mode_paiement }, {
+      onSuccess: () => { reset(); onOpenChange(false); },
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Encaisser un loyer{locataire && <span className="block text-sm font-normal text-muted-foreground mt-1">{locataire.prenoms} {locataire.nom}</span>}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1"><Label>Montant (FCFA) *</Label><Input type="number" placeholder="150000" {...register('montant')} />{errors.montant && <p className="text-xs text-red-500">{errors.montant.message}</p>}</div>
+            <div className="space-y-1"><Label>Date de paiement *</Label><Input type="date" {...register('date_paiement')} />{errors.date_paiement && <p className="text-xs text-red-500">{errors.date_paiement.message}</p>}</div>
+            <div className="space-y-1">
+              <Label>Mode de paiement *</Label>
+              <Select defaultValue="ESPECES" onValueChange={(v) => { register('mode_paiement').onChange({ target: { name: 'mode_paiement', value: v } }); }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ESPECES">Espèces</SelectItem>
+                  <SelectItem value="VIREMENT">Virement bancaire</SelectItem>
+                  <SelectItem value="MOBILE_MONEY">Mobile Money</SelectItem>
+                  <SelectItem value="CHEQUE">Chèque</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
+            <Button type="submit" variant="navy" disabled={isPending}>{isPending ? 'Encaissement...' : 'Encaisser'}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditLocataireDialog({ open, onOpenChange, locataire }) {
+  const { mutate: updateUser, isPending } = useUpdateUser();
+  const { register, handleSubmit, reset, formState: { errors } } = useForm({
+    resolver: zodResolver(editLocataireSchema),
+    values: locataire ? { nom: locataire.nom || '', prenoms: locataire.prenoms || '', email: locataire.email || '', telephone: locataire.telephone || '' } : undefined,
+  });
+
+  const onSubmit = (data) => {
+    updateUser({ id: locataire.id, data }, { onSuccess: () => { reset(); onOpenChange(false); } });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Modifier le locataire</DialogTitle></DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1"><Label>Nom *</Label><Input placeholder="Dupont" {...register('nom')} />{errors.nom && <p className="text-xs text-red-500">{errors.nom.message}</p>}</div>
+              <div className="space-y-1"><Label>Prénom(s) *</Label><Input placeholder="Jean" {...register('prenoms')} />{errors.prenoms && <p className="text-xs text-red-500">{errors.prenoms.message}</p>}</div>
+            </div>
+            <div className="space-y-1"><Label>Email *</Label><Input type="email" placeholder="jean@exemple.com" {...register('email')} />{errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}</div>
+            <div className="space-y-1"><Label>Téléphone *</Label><Input placeholder="+225 07 00 00 00 00" {...register('telephone')} />{errors.telephone && <p className="text-xs text-red-500">{errors.telephone.message}</p>}</div>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
+            <Button type="submit" variant="navy" disabled={isPending}>{isPending ? 'Enregistrement...' : 'Enregistrer'}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function StatutValidationDialog({ open, onOpenChange, locataire, mois, annee, onConfirm }) {
+  const [loyer, setLoyer] = useState(false);
+  const [sodeci, setSodeci] = useState(false);
+  const [datePaiementLoyer, setDatePaiementLoyer] = useState('');
+  const [datePaiementSodeci, setDatePaiementSodeci] = useState('');
+
+  const handleConfirm = () => {
+    const key = `locataire_statut_${locataire?.id}_${mois}_${annee}`;
+    localStorage.setItem(key, JSON.stringify({
+      loyer, sodeci,
+      date_paiement_loyer: datePaiementLoyer || null,
+      date_paiement_sodeci: datePaiementSodeci || null,
+      date: new Date().toISOString(),
+    }));
+    onConfirm();
+    onOpenChange(false);
+    setLoyer(false); setSodeci(false);
+    setDatePaiementLoyer(''); setDatePaiementSodeci('');
+  };
+
+  const moisLabel = MOIS.find(m => m.value === String(mois))?.label || mois;
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { setLoyer(false); setSodeci(false); setDatePaiementLoyer(''); setDatePaiementSodeci(''); } onOpenChange(v); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Validation des paiements</DialogTitle>
+          {locataire && <p className="text-sm text-muted-foreground mt-1">{locataire.prenoms} {locataire.nom}</p>}
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-sm font-medium text-blue-800">Validez ici les paiements du locataire</p>
+            <p className="text-xs text-blue-600 mt-1">Cochez les charges payees et entrez les dates de paiement pour <strong>{moisLabel} {annee}</strong>. Le statut sera mis a jour automatiquement.</p>
+          </div>
+          <div className="space-y-4">
+            <div className="space-y-2 p-3 border rounded-lg">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <Checkbox checked={loyer} onCheckedChange={setLoyer} />
+                <span className="text-sm font-medium">Loyer paye</span>
+              </label>
+              {loyer && (
+                <div className="ml-7 space-y-1">
+                  <Label className="text-xs">Date de paiement du loyer</Label>
+                  <Input type="date" value={datePaiementLoyer} onChange={e => setDatePaiementLoyer(e.target.value)} className="h-8 text-sm" />
+                </div>
+              )}
+            </div>
+            <div className="space-y-2 p-3 border rounded-lg">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <Checkbox checked={sodeci} onCheckedChange={setSodeci} />
+                <span className="text-sm font-medium">SODECI payee</span>
+              </label>
+              {sodeci && (
+                <div className="ml-7 space-y-1">
+                  <Label className="text-xs">Date de paiement SODECI</Label>
+                  <Input type="date" value={datePaiementSodeci} onChange={e => setDatePaiementSodeci(e.target.value)} className="h-8 text-sm" />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
+          <Button type="button" variant="navy" onClick={handleConfirm}>Confirmer</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Main Page ──────────────────────────────────────────────────────────────
+
+export default function AdminLocataires() {
+  const [search, setSearch] = useState('');
+  const [tab, setTab] = useState('tous');
+  const [page, setPage] = useState(1);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [selected, setSelected] = useState([]);
+  const [paiementOpen, setPaiementOpen] = useState(false);
+  const [paiementLocataire, setPaiementLocataire] = useState(null);
+  const [deleteId, setDeleteId] = useState(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editLocataire, setEditLocataire] = useState(null);
+  const [statutValidOpen, setStatutValidOpen] = useState(false);
+  const [statutValidLocataire, setStatutValidLocataire] = useState(null);
+  const [filterMois, setFilterMois] = useState('');
+  const [filterAnnee, setFilterAnnee] = useState('');
+
+  const { mois: currentMois, annee: currentAnnee } = getCurrentMoisAnnee();
+  const activeMois = filterMois || String(currentMois);
+  const activeAnnee = filterAnnee || String(currentAnnee);
+
+  const { data, isLoading } = useUsers({ role: 'LOCATAIRE', search: search || undefined, page, page_size: 20 });
+  const { data: rentalsData } = useLocationsActives();
+  const { mutate: updateStatus } = useUpdateUserStatus();
+  const { mutate: deleteUser, isPending: isDeleting } = useDeleteUser();
+
+  // Fetch factures for selected month to determine payment status
+  const { data: loyersFacturesData } = useFactures({ type_facture: 'LOYER', mois: Number(activeMois), annee: Number(activeAnnee), page_size: 100 });
+  const { data: sodeciFacturesData } = useFactures({ type_facture: 'SODECI', mois: Number(activeMois), annee: Number(activeAnnee), page_size: 100 });
+
+  const loyersFactures = loyersFacturesData?.data?.results || loyersFacturesData?.results || loyersFacturesData?.data || [];
+  const sodeciFactures = sodeciFacturesData?.data?.results || sodeciFacturesData?.results || sodeciFacturesData?.data || [];
+
+  const locataires = data?.data?.results || data?.results || data?.data || [];
+  const total = data?.pagination?.count || data?.data?.pagination?.count || data?.data?.count || data?.count || 0;
+  const totalPages = Math.ceil(total / 20);
+
+  // Build rental map
+  const rentalsByLocataire = useMemo(() => {
+    const rentals = rentalsData?.data?.results || rentalsData?.results || rentalsData?.data || [];
+    const map = new Map();
+    if (Array.isArray(rentals)) {
+      rentals.forEach(r => {
+        const locId = r.locataire?.id || r.locataire_id || r.locataire;
+        if (locId) map.set(locId, r);
+      });
+    }
+    return map;
+  }, [rentalsData]);
+
+  // Build payment status map per locataire from REAL facture data
+  const paymentStatusMap = useMemo(() => {
+    const map = new Map();
+
+    // Check loyer factures
+    loyersFactures.forEach(f => {
+      const locId = f.locataire || f.locataire_id;
+      if (!locId) return;
+      const existing = map.get(locId) || { loyerPaye: false, sodeciPaye: false };
+      // Check mois/annee match
+      const fMois = f.mois ? Number(f.mois) : null;
+      const fAnnee = f.annee ? Number(f.annee) : null;
+      if (fMois && fAnnee && (fMois !== Number(activeMois) || fAnnee !== Number(activeAnnee))) return;
+      if (f.statut === 'PAYEE') existing.loyerPaye = true;
+      map.set(locId, existing);
+    });
+
+    // Check SODECI factures
+    sodeciFactures.forEach(f => {
+      const locId = f.locataire || f.locataire_id;
+      if (!locId) return;
+      const existing = map.get(locId) || { loyerPaye: false, sodeciPaye: false };
+      const fMois = f.mois ? Number(f.mois) : null;
+      const fAnnee = f.annee ? Number(f.annee) : null;
+      if (fMois && fAnnee && (fMois !== Number(activeMois) || fAnnee !== Number(activeAnnee))) return;
+      if (f.statut === 'PAYEE') existing.sodeciPaye = true;
+      map.set(locId, existing);
+    });
+
+    // Also check localStorage validations
+    locataires.forEach(loc => {
+      const existing = map.get(loc.id) || { loyerPaye: false, sodeciPaye: false };
+      try {
+        const stored = JSON.parse(localStorage.getItem(`locataire_statut_${loc.id}_${activeMois}_${activeAnnee}`) || '{}');
+        if (stored.loyer) existing.loyerPaye = true;
+        if (stored.sodeci) existing.sodeciPaye = true;
+      } catch {}
+      map.set(loc.id, existing);
+    });
+
+    return map;
+  }, [loyersFactures, sodeciFactures, locataires, activeMois, activeAnnee]);
+
+  // Compute auto-status: à jour = loyer payé + sodeci payé
+  const getAutoStatut = (locId) => {
+    const ps = paymentStatusMap.get(locId);
+    if (!ps) return 'EN_RETARD';
+    return (ps.loyerPaye && ps.sodeciPaye) ? 'A_JOUR' : 'EN_RETARD';
+  };
+
+  const locatairesWithStatus = locataires.map(loc => ({
+    ...loc,
+    computedStatut: getAutoStatut(loc.id),
+    paymentInfo: paymentStatusMap.get(loc.id) || { loyerPaye: false, sodeciPaye: false },
+  }));
+
+  const aJourCount = locatairesWithStatus.filter(l => l.computedStatut === 'A_JOUR').length;
+  const enRetardCount = locatairesWithStatus.filter(l => l.computedStatut === 'EN_RETARD').length;
+
+  const filteredLocataires = tab === 'tous' ? locatairesWithStatus
+    : tab === 'a_jour' ? locatairesWithStatus.filter(l => l.computedStatut === 'A_JOUR')
+    : locatairesWithStatus.filter(l => l.computedStatut === 'EN_RETARD');
+
+  const toggleSelect = (id) => setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  const toggleAll = () => {
+    if (selected.length === filteredLocataires.length) setSelected([]);
+    else setSelected(filteredLocataires.map(l => l.id));
+  };
+
+  const handleStatusChange = (locId, newStatut) => {
+    if (newStatut === 'A_JOUR') {
+      const loc = locataires.find(l => l.id === locId);
+      setStatutValidLocataire(loc);
+      setStatutValidOpen(true);
+    } else {
+      updateStatus({ id: locId, statut: newStatut });
+    }
+  };
+
+  const getStatutBadge = (statut) => {
+    switch (statut) {
+      case 'A_JOUR': return <Badge variant="success" className="text-xs whitespace-nowrap">À jour</Badge>;
+      case 'EN_RETARD': return <Badge variant="destructive" className="text-xs whitespace-nowrap">En retard</Badge>;
+      case 'INACTIF': return <Badge variant="secondary" className="text-xs whitespace-nowrap">Inactif</Badge>;
+      default: return <Badge variant="outline" className="text-xs whitespace-nowrap">{statut || '-'}</Badge>;
+    }
+  };
+
+  const moisLabel = MOIS.find(m => m.value === activeMois)?.label || activeMois;
+
+  // PDF/CSV export
+  const exportCSV = () => {
+    const mLabel = MOIS.find(m => m.value === activeMois)?.label || activeMois;
+    const headers = ['Nom', 'Prenom', 'Email', 'Telephone', 'Maison', 'Statut', 'Mois', 'Annee', 'Loyer', 'Date paiement loyer', 'SODECI', 'Date paiement SODECI'];
+    const rows = filteredLocataires.map(loc => {
+      const rental = rentalsByLocataire.get(loc.id);
+      const maisonName = rental?.maison_titre || '-';
+      // Get stored dates
+      let storedDates = {};
+      try { storedDates = JSON.parse(localStorage.getItem(`locataire_statut_${loc.id}_${activeMois}_${activeAnnee}`) || '{}'); } catch {}
+      return [
+        loc.nom, loc.prenoms, loc.email, loc.telephone, maisonName,
+        loc.computedStatut === 'A_JOUR' ? 'A jour' : 'En retard',
+        mLabel, activeAnnee,
+        loc.paymentInfo.loyerPaye ? 'Paye' : 'Impaye',
+        storedDates.date_paiement_loyer || '-',
+        loc.paymentInfo.sodeciPaye ? 'Paye' : 'Impaye',
+        storedDates.date_paiement_sodeci || '-',
+      ];
+    });
+    const csv = [headers, ...rows].map(r => r.join(';')).join('\n');
+    // BOM UTF-8 pour que Excel lise correctement les accents
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `locataires_${activeMois}_${activeAnnee}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const ANNEES = Array.from({ length: 10 }, (_, i) => String(2026 + i));
+
+  return (
+    <div className="space-y-4">
+      <PageHeader
+        title="Gestion des locataires"
+        description={`${total} locataire(s) au total`}
+        actions={
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={exportCSV}>
+              <Download className="h-4 w-4 mr-1" />Rapport CSV
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setNotifOpen(true)}>
+              <Send className="h-4 w-4 mr-1" />Notification
+            </Button>
+            <Button variant="navy" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4 mr-1" />Ajouter
+            </Button>
+          </div>
+        }
+      />
+
+      {/* Period filter */}
+      <Card>
+        <CardContent className="p-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-medium text-navy-800">Période :</span>
+            <Select value={activeMois} onValueChange={(v) => { setFilterMois(v); setPage(1); }}>
+              <SelectTrigger className="w-32 h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {MOIS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={activeAnnee} onValueChange={(v) => { setFilterAnnee(v); setPage(1); }}>
+              <SelectTrigger className="w-20 h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {ANNEES.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <span className="text-xs text-muted-foreground ml-2">Statut calculé automatiquement : Loyer payé + SODECI payée = À jour</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Stats — cliquables */}
+      <div className="grid grid-cols-3 gap-3">
+        <button onClick={() => { setTab('tous'); setPage(1); }} className="text-left">
+          <StatCard title="Total locataires" value={total} icon={Users} color="navy" />
+        </button>
+        <button onClick={() => { setTab('a_jour'); setPage(1); }} className="text-left">
+          <StatCard title={`À jour — ${moisLabel}`} value={aJourCount} icon={UserCheck} color="green" />
+        </button>
+        <button onClick={() => { setTab('en_retard'); setPage(1); }} className="text-left">
+          <StatCard title={`En retard — ${moisLabel}`} value={enRetardCount} icon={UserX} color="maroon" />
+        </button>
+      </div>
+
+      {/* Filters */}
+      <Card>
+        <CardContent className="p-3 space-y-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Rechercher par nom, email..." className="pl-9" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+          </div>
+          <Tabs value={tab} onValueChange={(v) => { setTab(v); setPage(1); }}>
+            <TabsList>
+              <TabsTrigger value="tous">Tous ({total})</TabsTrigger>
+              <TabsTrigger value="a_jour" className="text-green-600">À jour ({aJourCount})</TabsTrigger>
+              <TabsTrigger value="en_retard" className="text-red-500">En retard ({enRetardCount})</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* Grouped actions */}
+      {selected.length > 0 && (
+        <div className="flex items-center gap-2 bg-navy-50 border border-navy-200 rounded-lg px-4 py-2">
+          <span className="text-sm text-navy-800 font-medium">{selected.length} sélectionné(s)</span>
+          <Button size="sm" variant="navy" onClick={() => setNotifOpen(true)}><Send className="h-3 w-3 mr-1" />Notifier</Button>
+        </div>
+      )}
+
+      {/* Table */}
+      <Card>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="p-4 space-y-3">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-14" />)}</div>
+          ) : filteredLocataires.length === 0 ? (
+            <EmptyState icon={Users} title="Aucun locataire" description="Ajoutez votre premier locataire." className="py-12" />
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="w-10"><Checkbox checked={selected.length === filteredLocataires.length && filteredLocataires.length > 0} onCheckedChange={toggleAll} /></TableHead>
+                      <TableHead>Locataire</TableHead>
+                      <TableHead className="hidden sm:table-cell">Téléphone</TableHead>
+                      <TableHead className="hidden md:table-cell">Maison</TableHead>
+                      <TableHead>Loyer</TableHead>
+                      <TableHead className="hidden sm:table-cell">SODECI</TableHead>
+                      <TableHead>Statut</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredLocataires.map((loc) => {
+                      const rental = rentalsByLocataire.get(loc.id);
+                      const maisonName = rental?.maison_titre || rental?.maison?.titre || loc.maison_titre || '-';
+                      return (
+                        <TableRow key={loc.id}>
+                          <TableCell><Checkbox checked={selected.includes(loc.id)} onCheckedChange={() => toggleSelect(loc.id)} /></TableCell>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium text-navy-800 text-sm">{loc.prenoms} {loc.nom}</p>
+                              <p className="text-xs text-muted-foreground">{loc.email}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{loc.telephone}</TableCell>
+                          <TableCell className="hidden md:table-cell text-xs text-muted-foreground">{maisonName}</TableCell>
+                          <TableCell>
+                            {loc.paymentInfo.loyerPaye
+                              ? <CheckCircle className="h-4 w-4 text-green-500" />
+                              : <XCircle className="h-4 w-4 text-red-500" />}
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            {loc.paymentInfo.sodeciPaye
+                              ? <CheckCircle className="h-4 w-4 text-green-500" />
+                              : <XCircle className="h-4 w-4 text-red-500" />}
+                          </TableCell>
+                          <TableCell>
+                            {getStatutBadge(loc.computedStatut)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button size="sm" variant="ghost" className="h-8 px-2" title="Encaisser" onClick={() => { setPaiementLocataire(loc); setPaiementOpen(true); }}>
+                                <Banknote className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-8 px-2" title="Valider paiements" onClick={() => { setStatutValidLocataire(loc); setStatutValidOpen(true); }}>
+                                <CheckCircle className="h-4 w-4 text-blue-500" />
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-8 px-2" title="Modifier" onClick={() => { setEditLocataire(loc); setEditOpen(true); }}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-8 px-2 text-red-500 hover:text-red-700" title="Supprimer" onClick={() => setDeleteId(loc.id)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="ghost" asChild className="h-8 px-2">
+                                <Link to={`/admin/locataires/${loc.id}`}><Eye className="h-4 w-4 mr-1" />Voir</Link>
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t">
+                  <p className="text-xs text-muted-foreground">{total} locataire(s)</p>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage(p => p - 1)}>Précédent</Button>
+                    <span className="text-xs flex items-center px-2">{page} / {totalPages}</span>
+                    <Button size="sm" variant="outline" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>Suivant</Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <CreateLocataireDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <NotifDialog open={notifOpen} onOpenChange={setNotifOpen} selectedIds={selected} locataires={locataires} />
+      <PaiementDialog open={paiementOpen} onOpenChange={setPaiementOpen} locataire={paiementLocataire} />
+      <EditLocataireDialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) setEditLocataire(null); }} locataire={editLocataire} />
+      <StatutValidationDialog
+        open={statutValidOpen}
+        onOpenChange={setStatutValidOpen}
+        locataire={statutValidLocataire}
+        mois={activeMois}
+        annee={activeAnnee}
+        onConfirm={() => {
+          if (statutValidLocataire) {
+            updateStatus({ id: statutValidLocataire.id, statut: 'A_JOUR' });
+          }
+        }}
+      />
+      <ConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(v) => !v && setDeleteId(null)}
+        title="Supprimer le locataire"
+        description="Cette action est irréversible. Le locataire sera définitivement supprimé."
+        confirmLabel="Supprimer"
+        onConfirm={() => deleteUser(deleteId, { onSuccess: () => setDeleteId(null) })}
+        isLoading={isDeleting}
+        variant="destructive"
+      />
+    </div>
+  );
+}

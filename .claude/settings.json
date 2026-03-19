@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(npm install:*)",
+      "Read(//c/Users/fofan/Downloads/gestion _locative_frontend/src/**)",
+      "Read(//c/Users/fofan/Downloads/gestion _locative_frontend/**)",
+      "Bash(npx vite:*)",
+      "Bash(node scripts/seed-data.mjs \"fofanaissouf179@gmail.com\" 'Mariamapp2026@12/^^!')",
+      "Bash(node -e \":*)",
+      "Bash(node seed-data.mjs)",
+      "Bash(npx shadcn@latest add tooltip)",
+      "Bash(npx shadcn@latest add tooltip --yes)",
+      "Bash(xargs grep:*)",
+      "Bash(grep -rn \"RAPPELS\\\\|envoyer.*whatsapp\\\\|envoyer.*email\\\\|sendNotification\" '/c/Users/fofan/Downloads/gestion _locative_frontend/src' --include=*.jsx --include=*.js)",
+      "Bash(node seed-demo.mjs)",
+      "Bash(node upload-images.mjs)"
+    ]
+  }
+}
