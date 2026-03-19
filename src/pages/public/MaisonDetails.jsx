@@ -252,9 +252,9 @@ export default function MaisonDetails() {
 
       <div className="container mx-auto px-4 py-6 max-w-5xl">
         {/* Back */}
-        <Button variant="ghost" size="sm" className="mb-4 text-navy-700" onClick={() => navigate(-1)}>
+        <Button variant="outline" size="default" className="mb-4 text-navy-700 border-navy-300 hover:bg-navy-50" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Retour
+          Retour aux maisons
         </Button>
 
         {/* Gallery */}

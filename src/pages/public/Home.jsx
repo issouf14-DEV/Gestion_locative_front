@@ -21,7 +21,7 @@ function MaisonCard({ maison }) {
 
   return (
     <Card className="group overflow-hidden hover:shadow-lg transition-shadow duration-300">
-      <div className="relative overflow-hidden h-48">
+      <Link to={`/maisons/${maison.id}`} className="block relative overflow-hidden h-48 cursor-pointer">
         {mainImage ? (
           <img
             src={mainImage}
@@ -45,9 +45,11 @@ function MaisonCard({ maison }) {
             Meuble
           </Badge>
         )}
-      </div>
+      </Link>
       <CardContent className="p-4">
-        <h3 className="font-semibold text-navy-800 line-clamp-1 text-sm">{maison.titre}</h3>
+        <Link to={`/maisons/${maison.id}`} className="hover:underline">
+          <h3 className="font-semibold text-navy-800 line-clamp-1 text-sm">{maison.titre}</h3>
+        </Link>
         <div className="flex items-center gap-1 text-muted-foreground text-xs mt-1">
           <MapPin className="h-3 w-3 flex-shrink-0" />
           <span className="line-clamp-1">{maison.commune}{maison.quartier ? `, ${maison.quartier}` : ''}</span>
@@ -97,7 +99,7 @@ function MaisonCardHorizontal({ maison }) {
     <Card className="group overflow-hidden hover:shadow-lg transition-shadow duration-300">
       <div className="flex flex-col sm:flex-row">
         {/* Image */}
-        <div className="relative overflow-hidden h-48 sm:h-auto sm:w-56 flex-shrink-0">
+        <Link to={`/maisons/${maison.id}`} className="relative overflow-hidden h-48 sm:h-auto sm:w-56 flex-shrink-0 cursor-pointer block">
           {mainImage ? (
             <img
               src={mainImage}
@@ -121,11 +123,13 @@ function MaisonCardHorizontal({ maison }) {
               Meuble
             </Badge>
           )}
-        </div>
+        </Link>
         {/* Content */}
         <CardContent className="p-4 flex-1 flex flex-col justify-between">
           <div>
-            <h3 className="font-semibold text-navy-800 text-base">{maison.titre}</h3>
+            <Link to={`/maisons/${maison.id}`} className="hover:underline">
+              <h3 className="font-semibold text-navy-800 text-base">{maison.titre}</h3>
+            </Link>
             <div className="flex items-center gap-1 text-muted-foreground text-sm mt-1">
               <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
               <span>{maison.commune}{maison.quartier ? `, ${maison.quartier}` : ''}</span>
