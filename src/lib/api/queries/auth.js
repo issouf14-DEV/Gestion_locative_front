@@ -26,10 +26,22 @@ export const useLogin = () => {
 };
 
 export const useRegister = () => {
+  const { setAuth } = useAuthStore();
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (data) => api.post(AUTH.REGISTER, data),
-    onSuccess: () => {
-      toast.success('Compte créé avec succès. Veuillez vous connecter.');
+    onSuccess: (response) => {
+      const payload = response.data?.data || response.data;
+      const accessToken = payload?.tokens?.access || payload?.access;
+      const refreshToken = payload?.tokens?.refresh || payload?.refresh;
+      if (accessToken && payload?.user) {
+        setAuth(payload.user, accessToken, refreshToken);
+        queryClient.invalidateQueries();
+        toast.success('Compte créé avec succès !');
+      } else {
+        toast.success('Compte créé avec succès. Veuillez vous connecter.');
+      }
     },
     onError: (error) => {
       const errors = error.response?.data?.errors;

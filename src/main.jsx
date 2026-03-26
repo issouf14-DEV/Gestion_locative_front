@@ -16,6 +16,9 @@ const queryClient = new QueryClient({
   },
 })
 
+const loader = document.getElementById('app-loader');
+if (loader) loader.remove();
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>

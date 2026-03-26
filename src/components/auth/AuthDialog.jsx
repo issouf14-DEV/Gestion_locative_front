@@ -40,8 +40,11 @@ function GoogleButton({ label, onSuccess }) {
   const [loading, setLoading] = useState(false);
 
   const handleGoogle = useCallback(() => {
+    if (!GOOGLE_CLIENT_ID) {
+      console.error('VITE_GOOGLE_CLIENT_ID non configuré');
+      return;
+    }
     if (!window.google?.accounts?.oauth2) {
-      // SDK not loaded yet, retry after a short delay
       const script = document.querySelector('script[src*="accounts.google.com/gsi/client"]');
       if (!script) return;
       script.addEventListener('load', () => handleGoogle(), { once: true });
@@ -204,8 +207,14 @@ function RegisterForm({ onSuccess, onGoogleSuccess, onSwitchToLogin }) {
 
   const onSubmit = (data) => {
     registerUser({ ...data, role: 'LOCATAIRE' }, {
-      onSuccess: () => {
-        if (onSuccess) onSuccess();
+      onSuccess: (response) => {
+        const payload = response?.data?.data || response?.data;
+        const hasTokens = !!(payload?.tokens?.access || payload?.access);
+        if (hasTokens) {
+          if (onGoogleSuccess) onGoogleSuccess(); // ferme le dialog
+        } else {
+          if (onSuccess) onSuccess(); // bascule vers login
+        }
       },
     });
   };
