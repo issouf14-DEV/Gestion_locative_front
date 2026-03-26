@@ -153,14 +153,14 @@ export default function AdminLayout() {
       {/* Main content */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden lg:ml-0">
         {/* Mobile topbar */}
-        <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-white border-b">
-          <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)}>
+        <header className="lg:hidden flex items-center justify-between px-4 py-2.5 bg-navy-800 border-b border-navy-700">
+          <Link to="/" className="flex items-center">
+            <img src={logobg} alt="Gestion Locative" className="h-8 w-auto brightness-0 invert" />
+          </Link>
+          <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)}
+            className="text-white hover:bg-navy-700 h-9 w-9">
             <Menu className="h-5 w-5" />
           </Button>
-          <Link to="/" className="flex items-center">
-            <img src={logobg} alt="Gestion Locative" className="h-8 w-auto" />
-          </Link>
-          <div className="w-9" />
         </header>
 
         <main className="flex-1 overflow-y-auto px-3 py-4 sm:px-4 sm:py-4">

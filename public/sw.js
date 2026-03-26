@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gestloc-v2';
+const CACHE_NAME = 'gestloc-v3';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
