@@ -899,7 +899,8 @@ export default function AdminFactures() {
 
   // Fetch all SODECI factures
   const { data, isLoading } = useFactures({ type_facture: 'SODECI', page_size: 200 });
-  const allFactures = data?.results || data?.data?.results || data?.data || [];
+  const allFactures = (data?.results || data?.data?.results || data?.data || [])
+    .filter(f => f.type_facture === 'SODECI');
 
   // Client-side filtering
   const filteredFactures = useMemo(() => {

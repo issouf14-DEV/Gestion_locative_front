@@ -200,7 +200,8 @@ export default function AdminLoyers() {
 
   // Memoize raw factures extraction to stabilize useMemo dependency
   const facturesRaw = useMemo(() => {
-    return facturesData?.data?.results || facturesData?.results || facturesData?.data || [];
+    const all = facturesData?.data?.results || facturesData?.results || facturesData?.data || [];
+    return all.filter(f => f.type_facture === 'LOYER');
   }, [facturesData]);
 
   const locataires = useMemo(() => {
