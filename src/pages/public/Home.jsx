@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, MapPin, Bed, Maximize2, Filter, X, Home as HomeIcon, ArrowRight, Phone, Calendar, LayoutGrid, List } from 'lucide-react';
-import logobg from '@/assets/logo_transparent.png';
+import logobg from '@/assets/logobg.png';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';

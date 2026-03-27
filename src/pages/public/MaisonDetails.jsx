@@ -24,7 +24,7 @@ import { useMaison } from '@/lib/api/queries/properties';
 import { useCreateReservation } from '@/lib/api/queries/reservations';
 import { formatCurrency } from '@/lib/utils/formatters';
 import useAuth from '@/hooks/useAuth';
-import logobg from '@/assets/logo_transparent.png';
+import logobg from '@/assets/logobg.png';
 
 const reservationSchema = z.object({
   nom: z.string().min(2, 'Le nom est requis (min. 2 caracteres)'),

@@ -11,7 +11,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
 import { useLogin, useRegister, useGoogleAuth } from '@/lib/api/queries/auth';
-import logobg from '@/assets/logo_transparent.png';
+import logobg from '@/assets/logobg.png';
 
 // ─── Schemas ────────────────────────────────────────────────────────────────
 

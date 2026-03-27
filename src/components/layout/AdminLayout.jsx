@@ -17,7 +17,7 @@ import { useLogout } from '@/lib/api/queries/auth';
 import { getInitials } from '@/lib/utils/formatters';
 import useNotifStore from '@/lib/store/notifStore';
 import { useNotificationsNonLues } from '@/lib/api/queries/notifications';
-import logobg from '@/assets/logo_transparent.png';
+import logobg from '@/assets/logobg.png';
 
 const navItems = [
   { href: '/admin/dashboard', icon: LayoutDashboard, label: 'Tableau de bord' },
