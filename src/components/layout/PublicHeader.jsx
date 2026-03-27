@@ -8,7 +8,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useNotificationsNonLues } from '@/lib/api/queries/notifications';
 import useNotifStore from '@/lib/store/notifStore';
 import AuthDialog from '@/components/auth/AuthDialog';
-import logobg from '@/assets/logobg.png';
+import logobg from '@/assets/logo_transparent.png';
 
 export default function PublicHeader() {
   const { isAuthenticated, role } = useAuth();
