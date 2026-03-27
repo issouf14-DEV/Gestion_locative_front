@@ -230,7 +230,7 @@ function DepenseForm({ depense, open, onOpenChange }) {
               <Input placeholder="Ex: Reparation toiture" {...register('titre')} />
               {errors.titre && <p className="text-xs text-red-500">{errors.titre.message}</p>}
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>Categorie *</Label>
                 <Select defaultValue={depense?.categorie} onValueChange={(v) => setValue('categorie', v)}>
@@ -249,7 +249,7 @@ function DepenseForm({ depense, open, onOpenChange }) {
                 {errors.montant && <p className="text-xs text-red-500">{errors.montant.message}</p>}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>Date *</Label>
                 <Input type="date" {...register('date_depense')} />

@@ -98,11 +98,11 @@ function CreateLocataireDialog({ open, onOpenChange }) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Ajouter un locataire</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-4 py-2">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>Nom *</Label>
                 <Input placeholder="Dupont" {...register('nom')} />
@@ -124,7 +124,7 @@ function CreateLocataireDialog({ open, onOpenChange }) {
               <Input placeholder="+225 07 00 00 00 00" {...register('telephone')} />
               {errors.telephone && <p className="text-xs text-red-500">{errors.telephone.message}</p>}
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>Mot de passe *</Label>
                 <Input type="password" placeholder="Min. 8 car." {...register('password')} />
@@ -152,7 +152,7 @@ function CreateLocataireDialog({ open, onOpenChange }) {
                 </div>
                 {maisonId && (
                   <>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <Label>Date de début</Label>
                         <Input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} />
@@ -456,7 +456,7 @@ function EditLocataireDialog({ open, onOpenChange, locataire }) {
         <DialogHeader><DialogTitle>Modifier le locataire</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-4 py-2">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1"><Label>Nom *</Label><Input placeholder="Dupont" {...register('nom')} />{errors.nom && <p className="text-xs text-red-500">{errors.nom.message}</p>}</div>
               <div className="space-y-1"><Label>Prénom(s) *</Label><Input placeholder="Jean" {...register('prenoms')} />{errors.prenoms && <p className="text-xs text-red-500">{errors.prenoms.message}</p>}</div>
             </div>
@@ -759,7 +759,7 @@ export default function AdminLocataires() {
       </Card>
 
       {/* Stats — cliquables */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <button onClick={() => { setTab('tous'); setPage(1); }} className="text-left">
           <StatCard title="Total locataires" value={total} icon={Users} color="navy" />
         </button>

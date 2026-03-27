@@ -171,12 +171,12 @@ function MaisonForm({ maison, open, onOpenChange }) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) { reset(); previews.forEach(p => URL.revokeObjectURL(p.url)); setPreviews([]); setFiles([]); } onOpenChange(v); }}>
-      <DialogContent className="max-w-3xl max-h-[95vh] overflow-y-auto">
+      <DialogContent className="w-full max-w-3xl max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Modifier la maison' : 'Ajouter une maison'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="grid grid-cols-2 gap-4 py-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
             <div className="col-span-2 space-y-1">
               <Label>Titre *</Label>
               <Input placeholder="Bel appartement F3 - Cocody" {...register('titre')} />
@@ -461,7 +461,7 @@ export default function AdminMaisons() {
               />
             </div>
             <Select value={statut || 'ALL'} onValueChange={(v) => { setStatut(v === 'ALL' ? '' : v); setPage(1); }}>
-              <SelectTrigger className="w-44">
+              <SelectTrigger className="w-full sm:w-44">
                 <SelectValue placeholder="Tous les statuts" />
               </SelectTrigger>
               <SelectContent>

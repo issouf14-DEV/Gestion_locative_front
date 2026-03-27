@@ -373,8 +373,8 @@ export default function AdminDashboard() {
           {depensesLoading ? (
             <Skeleton className="h-40" />
           ) : repartitionDepenses.length > 0 ? (
-            <div className="flex items-center gap-4">
-              <ResponsiveContainer width="55%" height={180}>
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <ResponsiveContainer width="100%" height={180} className="sm:w-[55%] sm:flex-shrink-0">
                 <PieChart>
                   <Pie data={repartitionDepenses} cx="50%" cy="50%" innerRadius={45} outerRadius={75} dataKey="montant">
                     {repartitionDepenses.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
@@ -382,7 +382,7 @@ export default function AdminDashboard() {
                   <Tooltip formatter={(v) => formatCurrency(v)} />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="flex-1 space-y-1.5">
+              <div className="w-full space-y-1.5">
                 {repartitionDepenses.map((d, i) => (
                   <div key={i} className="flex items-center gap-2 text-xs">
                     <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
