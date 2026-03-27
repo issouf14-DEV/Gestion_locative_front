@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Eye, CheckCircle, XCircle, Send, Download, Users, UserCheck, UserX, Banknote, Trash2, Pencil } from 'lucide-react';
+import { Plus, Search, Eye, CheckCircle, XCircle, Send, Download, Users, UserCheck, UserX, Trash2, Pencil } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -28,7 +28,6 @@ import { useMaisons } from '@/lib/api/queries/properties';
 import { useCreateLocation, useLocationsActives } from '@/lib/api/queries/rentals';
 import { useEnvoyerNotifTousLocataires, useEnvoyerNotification } from '@/lib/api/queries/notifications';
 import { cleanPhoneForWhatsApp } from '@/lib/utils/whatsapp';
-import { useEncaisserLoyer } from '@/lib/api/queries/payments';
 import { toast } from 'sonner';
 import { useFactures } from '@/lib/api/queries/billing';
 import { formatCurrency, formatDate, MOIS, getCurrentMoisAnnee } from '@/lib/utils/formatters';
@@ -58,11 +57,6 @@ const editLocataireSchema = z.object({
   telephone: z.string().min(8, 'Téléphone requis'),
 });
 
-const paiementSchema = z.object({
-  montant: z.string().min(1, 'Montant requis'),
-  date_paiement: z.string().min(1, 'Date requise'),
-  mode_paiement: z.string().min(1, 'Mode requis'),
-});
 
 // ─── Dialogs ────────────────────────────────────────────────────────────────
 
@@ -393,51 +387,6 @@ function NotifDialog({ open, onOpenChange, selectedIds, locataires }) {
   );
 }
 
-function PaiementDialog({ open, onOpenChange, locataire }) {
-  const { mutate: encaisser, isPending } = useEncaisserLoyer();
-  const { register, handleSubmit, reset, formState: { errors } } = useForm({
-    resolver: zodResolver(paiementSchema),
-    defaultValues: { date_paiement: new Date().toISOString().split('T')[0], mode_paiement: 'ESPECES' },
-  });
-
-  const onSubmit = (data) => {
-    encaisser({ locataire_id: locataire?.id, montant: Number(data.montant), date_paiement: data.date_paiement, mode_paiement: data.mode_paiement }, {
-      onSuccess: () => { reset(); onOpenChange(false); },
-    });
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Encaisser un loyer{locataire && <span className="block text-sm font-normal text-muted-foreground mt-1">{locataire.prenoms} {locataire.nom}</span>}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1"><Label>Montant (FCFA) *</Label><Input type="number" placeholder="150000" {...register('montant')} />{errors.montant && <p className="text-xs text-red-500">{errors.montant.message}</p>}</div>
-            <div className="space-y-1"><Label>Date de paiement *</Label><Input type="date" {...register('date_paiement')} />{errors.date_paiement && <p className="text-xs text-red-500">{errors.date_paiement.message}</p>}</div>
-            <div className="space-y-1">
-              <Label>Mode de paiement *</Label>
-              <Select defaultValue="ESPECES" onValueChange={(v) => { register('mode_paiement').onChange({ target: { name: 'mode_paiement', value: v } }); }}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ESPECES">Espèces</SelectItem>
-                  <SelectItem value="VIREMENT">Virement bancaire</SelectItem>
-                  <SelectItem value="MOBILE_MONEY">Mobile Money</SelectItem>
-                  <SelectItem value="CHEQUE">Chèque</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter className="mt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
-            <Button type="submit" variant="navy" disabled={isPending}>{isPending ? 'Encaissement...' : 'Encaisser'}</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 function EditLocataireDialog({ open, onOpenChange, locataire }) {
   const { mutate: updateUser, isPending } = useUpdateUser();
@@ -552,9 +501,7 @@ export default function AdminLocataires() {
   const [createOpen, setCreateOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [selected, setSelected] = useState([]);
-  const [paiementOpen, setPaiementOpen] = useState(false);
-  const [paiementLocataire, setPaiementLocataire] = useState(null);
-  const [deleteId, setDeleteId] = useState(null);
+const [deleteId, setDeleteId] = useState(null);
   const [editOpen, setEditOpen] = useState(false);
   const [editLocataire, setEditLocataire] = useState(null);
   const [statutValidOpen, setStatutValidOpen] = useState(false);
@@ -855,8 +802,8 @@ export default function AdminLocataires() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center justify-end gap-1">
-                              <Button size="sm" variant="ghost" className="h-8 px-2" title="Valider paiements" onClick={() => { setStatutValidLocataire(loc); setStatutValidOpen(true); }}>
-                                <CheckCircle className="h-4 w-4 text-blue-500" />
+                              <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => { setStatutValidLocataire(loc); setStatutValidOpen(true); }}>
+                                <CheckCircle className="h-4 w-4 text-blue-500 mr-1" />Valider
                               </Button>
                               <Button size="sm" variant="ghost" className="h-8 px-2" title="Modifier" onClick={() => { setEditLocataire(loc); setEditOpen(true); }}>
                                 <Pencil className="h-4 w-4" />
@@ -892,8 +839,7 @@ export default function AdminLocataires() {
 
       <CreateLocataireDialog open={createOpen} onOpenChange={setCreateOpen} />
       <NotifDialog open={notifOpen} onOpenChange={setNotifOpen} selectedIds={selected} locataires={locataires} />
-      <PaiementDialog open={paiementOpen} onOpenChange={setPaiementOpen} locataire={paiementLocataire} />
-      <EditLocataireDialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) setEditLocataire(null); }} locataire={editLocataire} />
+<EditLocataireDialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) setEditLocataire(null); }} locataire={editLocataire} />
       <StatutValidationDialog
         open={statutValidOpen}
         onOpenChange={setStatutValidOpen}
