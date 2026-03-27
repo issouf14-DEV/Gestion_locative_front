@@ -623,19 +623,8 @@ const [deleteId, setDeleteId] = useState(null);
       map.set(locId, existing);
     });
 
-    // Also check localStorage validations
-    locataires.forEach(loc => {
-      const existing = map.get(loc.id) || { loyerPaye: false, sodeciPaye: false };
-      try {
-        const stored = JSON.parse(localStorage.getItem(`locataire_statut_${loc.id}_${activeMois}_${activeAnnee}`) || '{}');
-        if (stored.loyer) existing.loyerPaye = true;
-        if (stored.sodeci) existing.sodeciPaye = true;
-      } catch {}
-      map.set(loc.id, existing);
-    });
-
     return map;
-  }, [loyersFactures, sodeciFactures, locataires, activeMois, activeAnnee]);
+  }, [loyersFactures, sodeciFactures, activeMois, activeAnnee]);
 
   // Compute auto-status: à jour = loyer payé + sodeci payé
   const getAutoStatut = (locId, apiStatut) => {
@@ -682,17 +671,16 @@ const [deleteId, setDeleteId] = useState(null);
     const rows = filteredLocataires.map(loc => {
       const rental = rentalsByLocataire.get(loc.id);
       const maisonName = rental?.maison_titre || '-';
-      // Get stored dates
-      let storedDates = {};
-      try { storedDates = JSON.parse(localStorage.getItem(`locataire_statut_${loc.id}_${activeMois}_${activeAnnee}`) || '{}'); } catch {}
+      const loyerF = loyersFactures.find(f => (f.locataire || f.locataire_id) === loc.id);
+      const sodeciF = sodeciFactures.find(f => (f.locataire || f.locataire_id) === loc.id);
       return [
         loc.nom, loc.prenoms, loc.email, loc.telephone, maisonName,
         loc.computedStatut === 'A_JOUR' ? 'A jour' : 'En retard',
         mLabel, activeAnnee,
         loc.paymentInfo.loyerPaye ? 'Paye' : 'Impaye',
-        storedDates.date_paiement_loyer || '-',
+        loyerF?.date_paiement || '-',
         loc.paymentInfo.sodeciPaye ? 'Paye' : 'Impaye',
-        storedDates.date_paiement_sodeci || '-',
+        sodeciF?.date_paiement || '-',
       ];
     });
     const csv = [headers, ...rows].map(r => r.join(';')).join('\n');
