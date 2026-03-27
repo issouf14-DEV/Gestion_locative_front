@@ -144,6 +144,7 @@ export default function AdminLocataireDetail() {
 
   const loyerPaye = loyerFacture?.statut === 'PAYEE' || localValidation.loyer === true;
   const sodeciPaye = sodeciFacture?.statut === 'PAYEE' || localValidation.sodeci === true;
+  const computedStatut = (loyerPaye && sodeciPaye) ? 'A_JOUR' : 'EN_RETARD';
 
   if (userLoading) {
     return (
@@ -198,11 +199,11 @@ export default function AdminLocataireDetail() {
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <div><span className="text-muted-foreground">Email :</span> <span className="ml-1">{user.email}</span></div>
-            <div><span className="text-muted-foreground">Téléphone :</span> <span className="ml-1">{user.telephone}</span></div>
+            <div><span className="text-muted-foreground">Téléphone :</span> <span className="ml-1">{user.telephone || '—'}</span></div>
             <div>
               <span className="text-muted-foreground">Statut :</span>
-              <Badge variant={user.statut === 'ACTIF' ? 'success' : 'secondary'} className="ml-2 text-xs">
-                {user.statut}
+              <Badge variant={computedStatut === 'A_JOUR' ? 'success' : 'destructive'} className="ml-2 text-xs">
+                {computedStatut === 'A_JOUR' ? 'À jour' : 'En retard'}
               </Badge>
             </div>
             <div>

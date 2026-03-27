@@ -812,7 +812,7 @@ export default function AdminLocataires() {
           ) : (
             <>
               <div className="overflow-x-auto">
-                <Table>
+                <Table className="min-w-[640px]">
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="w-10"><Checkbox checked={selected.length === filteredLocataires.length && filteredLocataires.length > 0} onCheckedChange={toggleAll} /></TableHead>
@@ -855,9 +855,6 @@ export default function AdminLocataires() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center justify-end gap-1">
-                              <Button size="sm" variant="ghost" className="h-8 px-2" title="Encaisser" onClick={() => { setPaiementLocataire(loc); setPaiementOpen(true); }}>
-                                <Banknote className="h-4 w-4" />
-                              </Button>
                               <Button size="sm" variant="ghost" className="h-8 px-2" title="Valider paiements" onClick={() => { setStatutValidLocataire(loc); setStatutValidOpen(true); }}>
                                 <CheckCircle className="h-4 w-4 text-blue-500" />
                               </Button>
