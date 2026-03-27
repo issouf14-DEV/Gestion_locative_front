@@ -77,7 +77,9 @@ function Sidebar({ onClose }) {
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 py-5 border-b border-navy-700 h-20">
         <Link to="/" className="flex items-center">
-          <img src={logobg} alt="Gestion Locative" className="h-10 w-auto brightness-0 invert" />
+          <div className="bg-white rounded-lg px-3 py-1.5">
+            <img src={logobg} alt="Gestion Locative" className="h-8 w-auto" />
+          </div>
         </Link>
       </div>
 
@@ -212,7 +214,9 @@ export default function AdminLayout() {
         {/* Mobile topbar */}
         <header className="lg:hidden flex items-center justify-between px-4 py-2.5 bg-navy-800 border-b border-navy-700">
           <Link to="/" className="flex items-center">
-            <img src={logobg} alt="Gestion Locative" className="h-8 w-auto brightness-0 invert" />
+            <div className="bg-white rounded-lg px-2 py-1">
+              <img src={logobg} alt="Gestion Locative" className="h-7 w-auto" />
+            </div>
           </Link>
           <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)}
             className="text-white hover:bg-navy-700 h-9 w-9">

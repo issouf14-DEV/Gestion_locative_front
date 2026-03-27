@@ -300,7 +300,9 @@ export default function Home() {
         </div>
         <div className="relative container mx-auto px-4 py-10 md:py-14 text-center">
           <div className="flex items-center justify-center mb-4">
-            <img src={logobg} alt="Gestion Locative" className="h-16 w-auto brightness-0 invert drop-shadow-lg" />
+            <div className="bg-white rounded-xl px-4 py-2 shadow-lg">
+              <img src={logobg} alt="Gestion Locative" className="h-12 w-auto" />
+            </div>
           </div>
           <h1 className="text-xl md:text-3xl font-extrabold mb-4 tracking-tight">
             Trouvez votre logement ideal <span className="text-maroon-400">en Cote d'Ivoire</span>
@@ -495,7 +497,9 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
             <div className="col-span-1 md:col-span-1 space-y-6">
               <Link to="/" className="inline-block">
-                <img src={logobg} alt="Gestion Locative" className="h-10 w-auto brightness-0 invert" />
+                <div className="bg-white rounded-lg px-3 py-1.5">
+                  <img src={logobg} alt="Gestion Locative" className="h-8 w-auto" />
+                </div>
               </Link>
               <p className="text-navy-200 text-sm leading-relaxed max-w-xs">
                 La solution leader pour la gestion immobiliere en Cote d'Ivoire.
