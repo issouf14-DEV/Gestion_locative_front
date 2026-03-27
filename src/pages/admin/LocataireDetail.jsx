@@ -138,12 +138,8 @@ export default function AdminLocataireDetail() {
   const loyerFacture = currentFactures.find(f => f.type_facture === 'LOYER');
   const sodeciFacture = currentFactures.find(f => f.type_facture === 'SODECI');
 
-  // Also check localStorage for admin-validated payments
-  let localValidation = {};
-  try { localValidation = JSON.parse(localStorage.getItem(`locataire_statut_${id}_${currentMois}_${currentAnnee}`) || '{}'); } catch {}
-
-  const loyerPaye = loyerFacture?.statut === 'PAYEE' || localValidation.loyer === true;
-  const sodeciPaye = sodeciFacture?.statut === 'PAYEE' || localValidation.sodeci === true;
+  const loyerPaye = loyerFacture?.statut === 'PAYEE';
+  const sodeciPaye = sodeciFacture?.statut === 'PAYEE';
   const computedStatut = (loyerPaye && sodeciPaye) ? 'A_JOUR' : 'EN_RETARD';
 
   if (userLoading) {

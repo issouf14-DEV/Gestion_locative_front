@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Plus, Search, Eye, CheckCircle, XCircle, Send, Download, Users, UserCheck, UserX, Trash2, Pencil } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -30,6 +31,7 @@ import { useEnvoyerNotifTousLocataires, useEnvoyerNotification } from '@/lib/api
 import { cleanPhoneForWhatsApp } from '@/lib/utils/whatsapp';
 import { toast } from 'sonner';
 import { useFactures } from '@/lib/api/queries/billing';
+import { useEncaisserFacture } from '@/lib/api/queries/payments';
 import { formatCurrency, formatDate, MOIS, getCurrentMoisAnnee } from '@/lib/utils/formatters';
 
 const locataireSchema = z.object({
@@ -422,30 +424,58 @@ function EditLocataireDialog({ open, onOpenChange, locataire }) {
   );
 }
 
-function StatutValidationDialog({ open, onOpenChange, locataire, mois, annee, onConfirm }) {
+function StatutValidationDialog({ open, onOpenChange, locataire, mois, annee }) {
+  const queryClient = useQueryClient();
   const [loyer, setLoyer] = useState(false);
   const [sodeci, setSodeci] = useState(false);
   const [datePaiementLoyer, setDatePaiementLoyer] = useState('');
   const [datePaiementSodeci, setDatePaiementSodeci] = useState('');
+  const [modePaiement, setModePaiement] = useState('ESPECES');
+  const [isPending, setIsPending] = useState(false);
 
-  const handleConfirm = () => {
-    const key = `locataire_statut_${locataire?.id}_${mois}_${annee}`;
-    localStorage.setItem(key, JSON.stringify({
-      loyer, sodeci,
-      date_paiement_loyer: datePaiementLoyer || null,
-      date_paiement_sodeci: datePaiementSodeci || null,
-      date: new Date().toISOString(),
-    }));
-    onConfirm();
-    onOpenChange(false);
+  const { mutateAsync: encaisser } = useEncaisserFacture();
+
+  const { data: facturesData } = useFactures(
+    { locataire: locataire?.id, mois: Number(mois), annee: Number(annee), page_size: 10 },
+    { enabled: open && !!locataire?.id }
+  );
+
+  const factures = facturesData?.results || facturesData?.data?.results || facturesData?.data || [];
+  const loyerFacture = factures.find(f => f.type_facture === 'LOYER');
+  const sodeciFacture = factures.find(f => f.type_facture === 'SODECI');
+
+  const resetState = () => {
     setLoyer(false); setSodeci(false);
     setDatePaiementLoyer(''); setDatePaiementSodeci('');
+    setModePaiement('ESPECES');
+  };
+
+  const handleConfirm = async () => {
+    const today = new Date().toISOString().split('T')[0];
+    setIsPending(true);
+    try {
+      if (loyer && loyerFacture) {
+        await encaisser({ facture_id: loyerFacture.id, montant: Number(loyerFacture.montant), date_paiement: datePaiementLoyer || today, mode_paiement: modePaiement });
+      }
+      if (sodeci && sodeciFacture) {
+        await encaisser({ facture_id: sodeciFacture.id, montant: Number(sodeciFacture.montant), date_paiement: datePaiementSodeci || today, mode_paiement: modePaiement });
+      }
+      queryClient.invalidateQueries({ queryKey: ['factures'] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success('Paiement(s) enregistré(s) avec succès');
+      resetState();
+      onOpenChange(false);
+    } catch {
+      // erreurs gerees par useEncaisserFacture
+    } finally {
+      setIsPending(false);
+    }
   };
 
   const moisLabel = MOIS.find(m => m.value === String(mois))?.label || mois;
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) { setLoyer(false); setSodeci(false); setDatePaiementLoyer(''); setDatePaiementSodeci(''); } onOpenChange(v); }}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) resetState(); onOpenChange(v); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Validation des paiements</DialogTitle>
@@ -453,30 +483,50 @@ function StatutValidationDialog({ open, onOpenChange, locataire, mois, annee, on
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-sm font-medium text-blue-800">Validez ici les paiements du locataire</p>
-            <p className="text-xs text-blue-600 mt-1">Cochez les charges payees et entrez les dates de paiement pour <strong>{moisLabel} {annee}</strong>. Le statut sera mis a jour automatiquement.</p>
+            <p className="text-sm font-medium text-blue-800">Enregistrement des paiements — {moisLabel} {annee}</p>
+            <p className="text-xs text-blue-600 mt-1">Le statut du locataire sera mis à jour automatiquement.</p>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-1">
+            <Label className="text-xs">Mode de paiement</Label>
+            <Select value={modePaiement} onValueChange={setModePaiement}>
+              <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ESPECES">Espèces</SelectItem>
+                <SelectItem value="VIREMENT">Virement bancaire</SelectItem>
+                <SelectItem value="MOBILE_MONEY">Mobile Money</SelectItem>
+                <SelectItem value="CHEQUE">Chèque</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-3">
             <div className="space-y-2 p-3 border rounded-lg">
               <label className="flex items-center gap-3 cursor-pointer">
-                <Checkbox checked={loyer} onCheckedChange={setLoyer} />
-                <span className="text-sm font-medium">Loyer paye</span>
+                <Checkbox checked={loyer} onCheckedChange={setLoyer} disabled={loyerFacture?.statut === 'PAYEE'} />
+                <span className="text-sm font-medium">
+                  Loyer payé {loyerFacture && <span className="text-xs text-muted-foreground">({formatCurrency(loyerFacture.montant)})</span>}
+                  {loyerFacture?.statut === 'PAYEE' && <span className="text-xs text-green-600 ml-1">— Déjà payé</span>}
+                  {!loyerFacture && <span className="text-xs text-muted-foreground ml-1">— Aucune facture</span>}
+                </span>
               </label>
               {loyer && (
                 <div className="ml-7 space-y-1">
-                  <Label className="text-xs">Date de paiement du loyer</Label>
+                  <Label className="text-xs">Date de paiement</Label>
                   <Input type="date" value={datePaiementLoyer} onChange={e => setDatePaiementLoyer(e.target.value)} className="h-8 text-sm" />
                 </div>
               )}
             </div>
             <div className="space-y-2 p-3 border rounded-lg">
               <label className="flex items-center gap-3 cursor-pointer">
-                <Checkbox checked={sodeci} onCheckedChange={setSodeci} />
-                <span className="text-sm font-medium">SODECI payee</span>
+                <Checkbox checked={sodeci} onCheckedChange={setSodeci} disabled={sodeciFacture?.statut === 'PAYEE'} />
+                <span className="text-sm font-medium">
+                  SODECI payée {sodeciFacture && <span className="text-xs text-muted-foreground">({formatCurrency(sodeciFacture.montant)})</span>}
+                  {sodeciFacture?.statut === 'PAYEE' && <span className="text-xs text-green-600 ml-1">— Déjà payé</span>}
+                  {!sodeciFacture && <span className="text-xs text-muted-foreground ml-1">— Aucune facture</span>}
+                </span>
               </label>
               {sodeci && (
                 <div className="ml-7 space-y-1">
-                  <Label className="text-xs">Date de paiement SODECI</Label>
+                  <Label className="text-xs">Date de paiement</Label>
                   <Input type="date" value={datePaiementSodeci} onChange={e => setDatePaiementSodeci(e.target.value)} className="h-8 text-sm" />
                 </div>
               )}
@@ -485,7 +535,9 @@ function StatutValidationDialog({ open, onOpenChange, locataire, mois, annee, on
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
-          <Button type="button" variant="navy" onClick={handleConfirm}>Confirmer</Button>
+          <Button type="button" variant="navy" onClick={handleConfirm} disabled={isPending || (!loyer && !sodeci)}>
+            {isPending ? 'Enregistrement...' : 'Confirmer'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -611,15 +663,6 @@ const [deleteId, setDeleteId] = useState(null);
     else setSelected(filteredLocataires.map(l => l.id));
   };
 
-  const handleStatusChange = (locId, newStatut) => {
-    if (newStatut === 'A_JOUR') {
-      const loc = locataires.find(l => l.id === locId);
-      setStatutValidLocataire(loc);
-      setStatutValidOpen(true);
-    } else {
-      updateStatus({ id: locId, statut: newStatut });
-    }
-  };
 
   const getStatutBadge = (statut) => {
     switch (statut) {
@@ -846,11 +889,6 @@ const [deleteId, setDeleteId] = useState(null);
         locataire={statutValidLocataire}
         mois={activeMois}
         annee={activeAnnee}
-        onConfirm={() => {
-          if (statutValidLocataire) {
-            updateStatus({ id: statutValidLocataire.id, statut: 'A_JOUR' });
-          }
-        }}
       />
       <ConfirmDialog
         open={!!deleteId}

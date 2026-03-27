@@ -103,7 +103,7 @@ export const useEncaisserFacture = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['paiements'] });
       qc.invalidateQueries({ queryKey: ['factures'] });
-      toast.success('Facture encaissée avec succès');
+      qc.invalidateQueries({ queryKey: ['users'] });
     },
     onError: (error) => {
       toast.error(error.response?.data?.message || 'Erreur lors de l\'encaissement');

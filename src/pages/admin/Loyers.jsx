@@ -27,16 +27,7 @@ import { formatCurrency, formatDate, MOIS, getCurrentMoisAnnee } from '@/lib/uti
 import { toast } from 'sonner';
 import { cleanPhoneForWhatsApp } from '@/lib/utils/whatsapp';
 
-// Get effective loyer status + payment date (check admin localStorage validation)
 function getEffectiveLoyerInfo(facture) {
-  if (facture.statut === 'PAYEE') return { statut: 'PAYEE', datePaiement: facture.date_paiement || null };
-  try {
-    const key = `locataire_statut_${facture.locataire || facture.locataire_id}_${facture.mois}_${facture.annee}`;
-    const stored = JSON.parse(localStorage.getItem(key) || '{}');
-    if (stored.loyer === true) {
-      return { statut: 'PAYEE', datePaiement: stored.date_paiement_loyer || stored.date || null };
-    }
-  } catch { /* ignore */ }
   return { statut: facture.statut, datePaiement: facture.date_paiement || null };
 }
 

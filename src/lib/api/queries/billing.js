@@ -3,10 +3,12 @@ import api from '../axios';
 import { BILLING } from '../endpoints';
 import { toast } from 'sonner';
 
-export const useFactures = (filters = {}) => {
+export const useFactures = (filters = {}, options = {}) => {
+  const { enabled = true } = options;
   return useQuery({
     queryKey: ['factures', filters],
     queryFn: () => api.get(BILLING.FACTURES, { params: filters }).then(r => r.data),
+    enabled,
   });
 };
 
