@@ -575,12 +575,12 @@ export default function AdminLocataires() {
   const { data: loyersFacturesData } = useFactures({ type_facture: 'LOYER', mois: Number(activeMois), annee: Number(activeAnnee), page_size: 100 });
   const { data: sodeciFacturesData } = useFactures({ type_facture: 'SODECI', mois: Number(activeMois), annee: Number(activeAnnee), page_size: 100 });
 
-  const loyersFactures = loyersFacturesData?.data?.results || loyersFacturesData?.results || loyersFacturesData?.data || [];
-  const sodeciFactures = sodeciFacturesData?.data?.results || sodeciFacturesData?.results || sodeciFacturesData?.data || [];
+  const loyersFactures = loyersFacturesData?.results || loyersFacturesData?.data?.results || loyersFacturesData?.data || [];
+  const sodeciFactures = sodeciFacturesData?.results || sodeciFacturesData?.data?.results || sodeciFacturesData?.data || [];
 
-  const locataires = data?.data?.results || data?.results || data?.data || [];
-  const total = data?.pagination?.count || data?.data?.pagination?.count || data?.data?.count || data?.count || 0;
-  const totalPages = Math.ceil(total / 20);
+  const locataires = data?.results || data?.data?.results || data?.data || [];
+  const total = data?.count || data?.data?.count || 0;
+  const totalPages = data?.total_pages || Math.ceil(total / 20);
 
   // Build rental map
   const rentalsByLocataire = useMemo(() => {
