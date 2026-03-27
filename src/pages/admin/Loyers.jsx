@@ -22,6 +22,7 @@ import { useFactures, useGenererLoyers, useDeleteFacture } from '@/lib/api/queri
 import { usePaiements } from '@/lib/api/queries/payments';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { useLocataires } from '@/lib/api/queries/users';
+import { useLocationsActives } from '@/lib/api/queries/rentals';
 import { formatCurrency, formatDate, MOIS, getCurrentMoisAnnee } from '@/lib/utils/formatters';
 import { toast } from 'sonner';
 import { cleanPhoneForWhatsApp } from '@/lib/utils/whatsapp';
@@ -194,9 +195,23 @@ export default function AdminLoyers() {
     page_size: 50,
   });
   const { data: locatairesData } = useLocataires();
+  const { data: locationsData } = useLocationsActives();
 
   const facturesData = facturesQuery.data;
   const isLoading = facturesQuery.isLoading;
+
+  // Build locataire -> maison map from active locations
+  const maisonByLocataire = useMemo(() => {
+    const rentals = locationsData?.data?.results || locationsData?.results || locationsData?.data || [];
+    const map = new Map();
+    if (Array.isArray(rentals)) {
+      rentals.forEach(r => {
+        const locId = r.locataire?.id || r.locataire_id || r.locataire;
+        if (locId) map.set(locId, r.maison?.titre || r.maison_titre || '-');
+      });
+    }
+    return map;
+  }, [locationsData]);
 
   // Memoize raw factures extraction to stabilize useMemo dependency
   const facturesRaw = useMemo(() => {
@@ -208,13 +223,15 @@ export default function AdminLoyers() {
     return locatairesData?.data?.results || locatairesData?.results || locatairesData?.data || [];
   }, [locatairesData]);
 
-  // Apply effective status + payment date from localStorage
+  // Apply effective status + payment date from localStorage + enrich with maison
   const factures = useMemo(() => {
     return facturesRaw.map(f => {
       const info = getEffectiveLoyerInfo(f);
-      return { ...f, effectiveStatut: info.statut, effectiveDatePaiement: info.datePaiement };
+      const locId = f.locataire || f.locataire_id;
+      const maisonTitre = f.maison_titre || (locId ? maisonByLocataire.get(locId) : null) || '-';
+      return { ...f, effectiveStatut: info.statut, effectiveDatePaiement: info.datePaiement, maison_titre: maisonTitre };
     });
-  }, [facturesRaw]);
+  }, [facturesRaw, maisonByLocataire]);
 
   // Filter by status
   const filteredFactures = filterStatut
