@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Trash2, Pencil, Receipt, TrendingDown, Download, History, ChevronDown, ChevronUp, Search, Filter, Calendar, Home, X } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -167,6 +167,16 @@ function DepenseForm({ depense, open, onOpenChange }) {
   const maisons = maisonsData?.data?.results || maisonsData?.results || maisonsData?.data || [];
 
   const [recu, setRecu] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const prevPreviewRef = useRef(null);
+
+  useEffect(() => {
+    if (depense?.recu_url || depense?.recu) {
+      setPreviewUrl(depense.recu_url || depense.recu);
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [depense]);
 
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm({
     resolver: zodResolver(depenseSchema),
@@ -211,14 +221,15 @@ function DepenseForm({ depense, open, onOpenChange }) {
             date_depense: data.date_depense,
             description: data.description || '',
           });
-          reset(); setRecu(null); onOpenChange(false);
+          if (prevPreviewRef.current?.startsWith('blob:')) URL.revokeObjectURL(prevPreviewRef.current);
+          reset(); setRecu(null); setPreviewUrl(null); onOpenChange(false);
         },
       });
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { reset(); if (prevPreviewRef.current?.startsWith('blob:')) URL.revokeObjectURL(prevPreviewRef.current); setPreviewUrl(null); setRecu(null); } onOpenChange(v); }}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Modifier la depense' : 'Ajouter une depense'}</DialogTitle>
@@ -274,7 +285,50 @@ function DepenseForm({ depense, open, onOpenChange }) {
             </div>
             <div className="space-y-1">
               <Label>Recu / Justificatif</Label>
-              <Input type="file" accept="image/*,.pdf" onChange={(e) => setRecu(e.target.files?.[0] || null)} />
+              <Input
+                type="file"
+                accept="image/*,.pdf"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  setRecu(file);
+                  if (prevPreviewRef.current?.startsWith('blob:')) URL.revokeObjectURL(prevPreviewRef.current);
+                  if (file?.type.startsWith('image/')) {
+                    const url = URL.createObjectURL(file);
+                    prevPreviewRef.current = url;
+                    setPreviewUrl(url);
+                  } else {
+                    prevPreviewRef.current = null;
+                    setPreviewUrl(null);
+                  }
+                }}
+              />
+              {previewUrl && (
+                <div className="mt-2 relative">
+                  <img
+                    src={previewUrl}
+                    alt="Aperçu du justificatif"
+                    className="max-h-40 rounded-md border object-contain w-full bg-muted/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
+                      prevPreviewRef.current = null;
+                      setPreviewUrl(null);
+                      setRecu(null);
+                    }}
+                    className="absolute top-1 right-1 bg-black/50 hover:bg-black/70 text-white rounded-full p-0.5"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+              {recu?.type === 'application/pdf' && (
+                <p className="mt-1 text-xs text-muted-foreground flex items-center gap-1">
+                  <Receipt className="h-3.5 w-3.5" />
+                  {recu.name}
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter className="mt-4">
@@ -538,71 +592,90 @@ export default function AdminDepenses() {
       {/* Compact filters */}
       <Card>
         <CardContent className="p-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2">
+            <div className="col-span-2 sm:hidden flex items-center gap-1 text-xs text-muted-foreground font-medium">
+              <Filter className="h-3.5 w-3.5 shrink-0" />Filtres
+            </div>
+            <Filter className="h-4 w-4 text-muted-foreground shrink-0 hidden sm:block" />
 
-            <Select value={filterMois || 'ALL'} onValueChange={handleMoisChange}>
-              <SelectTrigger className="w-[130px] h-8 text-xs">
-                <SelectValue placeholder="Mois" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">Tous les mois</SelectItem>
-                {MOIS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <div className="space-y-0.5">
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Mois</p>
+              <Select value={filterMois || 'ALL'} onValueChange={handleMoisChange}>
+                <SelectTrigger className="w-full sm:w-[130px] h-8 text-xs">
+                  <SelectValue placeholder="Tous" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Tous les mois</SelectItem>
+                  {MOIS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
 
-            <Select value={filterAnnee || 'ALL'} onValueChange={handleAnneeChange}>
-              <SelectTrigger className="w-[100px] h-8 text-xs">
-                <SelectValue placeholder="Annee" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">Toutes</SelectItem>
-                {ANNEES.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <div className="space-y-0.5">
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Année</p>
+              <Select value={filterAnnee || 'ALL'} onValueChange={handleAnneeChange}>
+                <SelectTrigger className="w-full sm:w-[100px] h-8 text-xs">
+                  <SelectValue placeholder="Toutes" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Toutes</SelectItem>
+                  {ANNEES.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
 
-            <Select value={filterCategorie || 'ALL'} onValueChange={(v) => { setFilterCategorie(v === 'ALL' ? '' : v); setPage(1); }}>
-              <SelectTrigger className="w-[130px] h-8 text-xs">
-                <SelectValue placeholder="Categorie" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">Toutes cat.</SelectItem>
-                {CATEGORIES.map(c => <SelectItem key={c} value={c}>{CAT_LABELS[c]}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <div className="space-y-0.5">
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Catégorie</p>
+              <Select value={filterCategorie || 'ALL'} onValueChange={(v) => { setFilterCategorie(v === 'ALL' ? '' : v); setPage(1); }}>
+                <SelectTrigger className="w-full sm:w-[130px] h-8 text-xs">
+                  <SelectValue placeholder="Toutes" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Toutes cat.</SelectItem>
+                  {CATEGORIES.map(c => <SelectItem key={c} value={c}>{CAT_LABELS[c]}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
 
-            <Select value={filterMaison || 'ALL'} onValueChange={(v) => { setFilterMaison(v === 'ALL' ? '' : v); setPage(1); }}>
-              <SelectTrigger className="w-[130px] h-8 text-xs">
-                <SelectValue placeholder="Maison" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">Toutes maisons</SelectItem>
-                {maisons.map(m => <SelectItem key={m.id} value={String(m.id)}>{m.titre}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <div className="space-y-0.5">
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Maison</p>
+              <Select value={filterMaison || 'ALL'} onValueChange={(v) => { setFilterMaison(v === 'ALL' ? '' : v); setPage(1); }}>
+                <SelectTrigger className="w-full sm:w-[130px] h-8 text-xs">
+                  <SelectValue placeholder="Toutes" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Toutes maisons</SelectItem>
+                  {maisons.map(m => <SelectItem key={m.id} value={String(m.id)}>{m.titre}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
 
-            <div className="flex items-center gap-1">
-              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                type="date"
-                value={filterDateDebut}
-                onChange={e => handleDateDebutChange(e.target.value)}
-                className="w-[130px] h-8 text-xs"
-              />
-              <span className="text-xs text-muted-foreground">—</span>
-              <Input
-                type="date"
-                value={filterDateFin}
-                onChange={e => handleDateFinChange(e.target.value)}
-                className="w-[130px] h-8 text-xs"
-              />
+            <div className="col-span-2 sm:col-span-1 space-y-0.5">
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Période</p>
+              <div className="flex items-center gap-1">
+                <Input
+                  type="date"
+                  value={filterDateDebut}
+                  onChange={e => handleDateDebutChange(e.target.value)}
+                  className="flex-1 sm:w-[130px] h-8 text-xs"
+                />
+                <span className="text-xs text-muted-foreground">—</span>
+                <Input
+                  type="date"
+                  value={filterDateFin}
+                  onChange={e => handleDateFinChange(e.target.value)}
+                  className="flex-1 sm:w-[130px] h-8 text-xs"
+                />
+              </div>
             </div>
 
             {hasFilters && (
-              <Button variant="ghost" size="sm" onClick={resetAllFilters} className="h-8 text-xs text-muted-foreground hover:text-foreground">
-                <X className="h-3.5 w-3.5 mr-1" />
-                Reinitialiser
-              </Button>
+              <div className="col-span-2 sm:col-span-1 flex items-end">
+                <Button variant="ghost" size="sm" onClick={resetAllFilters} className="h-8 text-xs text-muted-foreground hover:text-foreground">
+                  <X className="h-3.5 w-3.5 mr-1" />
+                  Réinitialiser
+                </Button>
+              </div>
             )}
           </div>
 
@@ -640,7 +713,7 @@ export default function AdminDepenses() {
           ) : (
             <>
               <div className="overflow-x-auto">
-                <Table>
+                <Table className="min-w-[580px]">
                   <TableHeader>
                     <TableRow className="bg-navy-50/50">
                       <TableHead className="text-xs font-semibold">Date</TableHead>

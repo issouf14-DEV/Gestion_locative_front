@@ -639,15 +639,15 @@ export default function AdminLocataires() {
   }, [loyersFactures, sodeciFactures, locataires, activeMois, activeAnnee]);
 
   // Compute auto-status: à jour = loyer payé + sodeci payé
-  const getAutoStatut = (locId) => {
+  const getAutoStatut = (locId, apiStatut) => {
     const ps = paymentStatusMap.get(locId);
-    if (!ps) return 'EN_RETARD';
+    if (!ps) return apiStatut === 'A_JOUR' ? 'A_JOUR' : 'EN_RETARD';
     return (ps.loyerPaye && ps.sodeciPaye) ? 'A_JOUR' : 'EN_RETARD';
   };
 
   const locatairesWithStatus = locataires.map(loc => ({
     ...loc,
-    computedStatut: getAutoStatut(loc.id),
+    computedStatut: getAutoStatut(loc.id, loc.statut),
     paymentInfo: paymentStatusMap.get(loc.id) || { loyerPaye: false, sodeciPaye: false },
   }));
 
@@ -741,32 +741,38 @@ export default function AdminLocataires() {
         <CardContent className="p-3">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium text-navy-800">Période :</span>
-            <Select value={activeMois} onValueChange={(v) => { setFilterMois(v); setPage(1); }}>
-              <SelectTrigger className="w-32 h-8 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {MOIS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={activeAnnee} onValueChange={(v) => { setFilterAnnee(v); setPage(1); }}>
-              <SelectTrigger className="w-20 h-8 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {ANNEES.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <span className="text-xs text-muted-foreground ml-2">Statut calculé automatiquement : Loyer payé + SODECI payée = À jour</span>
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground">Mois</span>
+              <Select value={activeMois} onValueChange={(v) => { setFilterMois(v); setPage(1); }}>
+                <SelectTrigger className="w-32 h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {MOIS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground">Année</span>
+              <Select value={activeAnnee} onValueChange={(v) => { setFilterAnnee(v); setPage(1); }}>
+                <SelectTrigger className="w-20 h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {ANNEES.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <span className="text-xs text-muted-foreground ml-1 hidden sm:inline">Statut calculé automatiquement : Loyer payé + SODECI payée = À jour</span>
           </div>
         </CardContent>
       </Card>
 
       {/* Stats — cliquables */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <button onClick={() => { setTab('tous'); setPage(1); }} className="text-left">
+        <button onClick={() => { setTab('tous'); setPage(1); }} className="text-left h-full w-full">
           <StatCard title="Total locataires" value={total} icon={Users} color="navy" />
         </button>
-        <button onClick={() => { setTab('a_jour'); setPage(1); }} className="text-left">
+        <button onClick={() => { setTab('a_jour'); setPage(1); }} className="text-left h-full w-full">
           <StatCard title={`À jour — ${moisLabel}`} value={aJourCount} icon={UserCheck} color="green" />
         </button>
-        <button onClick={() => { setTab('en_retard'); setPage(1); }} className="text-left">
+        <button onClick={() => { setTab('en_retard'); setPage(1); }} className="text-left h-full w-full">
           <StatCard title={`En retard — ${moisLabel}`} value={enRetardCount} icon={UserX} color="maroon" />
         </button>
       </div>

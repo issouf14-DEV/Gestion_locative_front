@@ -3,7 +3,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Home, Users, FileText, CreditCard,
   Receipt, Bell, Menu, X, LogOut, User, ChevronRight,
-  Building2, Banknote
+  Building2, Banknote, MoreHorizontal
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -131,6 +131,63 @@ function Sidebar({ onClose }) {
   );
 }
 
+const adminBottomNavItems = [
+  { href: '/admin/dashboard', icon: LayoutDashboard, label: 'Accueil' },
+  { href: '/admin/locataires', icon: Users, label: 'Locataires' },
+  { href: '/admin/maisons', icon: Home, label: 'Maisons' },
+  { href: '/admin/loyers', icon: Banknote, label: 'Finances', activeOn: ['/admin/loyers', '/admin/factures', '/admin/depenses'] },
+];
+
+function AdminBottomNav({ onMenuOpen }) {
+  const location = useLocation();
+  const { unreadCount } = useNotifStore();
+
+  return (
+    <nav
+      className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+    >
+      <div className="flex items-center justify-around h-16">
+        {adminBottomNavItems.map((item) => {
+          const isActive = item.activeOn
+            ? item.activeOn.some(p => location.pathname.startsWith(p))
+            : location.pathname === item.href || location.pathname.startsWith(item.href + '/');
+          return (
+            <Link
+              key={item.href}
+              to={item.href}
+              className={cn(
+                'flex flex-col items-center justify-center gap-0.5 flex-1 h-full px-1 transition-colors relative',
+                isActive ? 'text-maroon-600' : 'text-gray-400'
+              )}
+            >
+              <item.icon className={cn('h-5 w-5', isActive && 'stroke-[2.5]')} />
+              <span className={cn('text-[10px] font-medium leading-none', isActive ? 'text-maroon-600' : 'text-gray-400')}>
+                {item.label}
+              </span>
+              {isActive && (
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-maroon-500 rounded-full" />
+              )}
+            </Link>
+          );
+        })}
+        <button
+          onClick={onMenuOpen}
+          className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full px-1 text-gray-400 transition-colors relative"
+        >
+          {unreadCount > 0 && (
+            <span className="absolute top-2 right-4 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-maroon-500 text-white text-[9px] font-bold px-0.5">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+          <MoreHorizontal className="h-5 w-5" />
+          <span className="text-[10px] font-medium leading-none">Plus</span>
+        </button>
+      </div>
+    </nav>
+  );
+}
+
 export default function AdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -163,10 +220,11 @@ export default function AdminLayout() {
           </Button>
         </header>
 
-        <main className="flex-1 overflow-y-auto px-3 py-4 sm:px-4 sm:py-4">
+        <main className="flex-1 overflow-y-auto px-3 py-4 sm:px-4 sm:py-4 pb-20 lg:pb-4">
           <Outlet />
         </main>
       </div>
+      <AdminBottomNav onMenuOpen={() => setMobileOpen(true)} />
     </div>
   );
 }

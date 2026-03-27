@@ -11,9 +11,9 @@ export default function StatCard({ title, value, icon: Icon, description, trend,
   };
 
   return (
-    <Card className={cn('overflow-hidden', className)}>
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between">
+    <Card className={cn('overflow-hidden h-full', className)}>
+      <CardContent className="p-4 sm:p-6">
+        <div className="flex items-center justify-between">
           <div className="flex-1">
             <p className="text-sm text-muted-foreground font-medium">{title}</p>
             <p className="text-2xl font-bold text-navy-800 mt-1">{value}</p>
