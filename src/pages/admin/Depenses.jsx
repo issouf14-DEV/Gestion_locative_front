@@ -390,7 +390,7 @@ export default function AdminDepenses() {
   const { mutate: deleteDepense, isPending: isDeleting } = useDeleteDepense();
   const { data: maisonsData } = useMaisons();
 
-  const depensesRaw = data?.data?.results || data?.results || data?.data || [];
+  const depensesRaw = data?.data?.results || data?.results || data?.data || (Array.isArray(data) ? data : []);
   const total = data?.pagination?.count || data?.data?.pagination?.count || data?.data?.count || data?.count || 0;
   const totalPages = Math.ceil(total / 20);
   const maisons = maisonsData?.data?.results || maisonsData?.results || maisonsData?.data || [];
