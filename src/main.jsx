@@ -10,8 +10,10 @@ const queryClient = new QueryClient({
       retry: 1,
       refetchOnWindowFocus: true,
       refetchOnMount: true,
-      staleTime: 1000 * 60,
-      gcTime: 1000 * 60 * 10,
+      staleTime: 30 * 1000,              // données fraîches 30s
+      gcTime: 10 * 60 * 1000,
+      refetchInterval: 60 * 1000,        // polling automatique toutes les 60s
+      refetchIntervalInBackground: false, // pause quand l'onglet est inactif
     },
   },
 })

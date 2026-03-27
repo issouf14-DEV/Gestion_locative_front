@@ -6,8 +6,8 @@ export const useDashboardAdmin = (params = {}) => {
   return useQuery({
     queryKey: ['dashboard-admin', params],
     queryFn: () => api.get(DASHBOARD.ADMIN, { params }).then(r => r.data),
-    staleTime: 1000 * 60 * 2,
-    refetchInterval: 1000 * 60 * 5,
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
   });
 };
 
