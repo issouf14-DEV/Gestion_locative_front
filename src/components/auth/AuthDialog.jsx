@@ -351,7 +351,7 @@ export default function AuthDialog({ open, onOpenChange, defaultTab = 'login', o
       <DialogContent className="sm:max-w-[440px] p-0 gap-0 overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-navy-800 to-navy-900 px-6 py-5 text-center">
-          <img src={logobg} alt="Logo" className="h-8 w-auto mx-auto mb-2" />
+          <img src={logobg} alt="Logo" className="h-8 w-auto mx-auto mb-2 brightness-0 invert" />
           <DialogTitle className="text-white text-lg font-bold">
             {tab === 'login' ? 'Bienvenue' : 'Rejoignez-nous'}
           </DialogTitle>

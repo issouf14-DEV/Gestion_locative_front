@@ -60,7 +60,7 @@ function Sidebar({ onClose }) {
     <div className="flex flex-col h-full bg-navy-800 border-r border-navy-700">
       <div className="flex items-center gap-3 px-4 py-5 border-b border-navy-700 h-20">
         <Link to="/" className="flex items-center">
-          <img src={logobg} alt="Gestion Locative" className="h-8 w-auto" />
+          <img src={logobg} alt="Gestion Locative" className="h-8 w-auto brightness-0 invert" />
         </Link>
       </div>
       <nav className="flex-1 px-3 py-4 flex flex-col gap-1">
@@ -179,7 +179,7 @@ export default function TenantLayout() {
         {/* Header mobile */}
         <header className="lg:hidden flex items-center justify-between px-4 py-2.5 bg-navy-800 border-b border-navy-700">
           <Link to="/" className="flex items-center">
-            <img src={logobg} alt="Gestion Locative" className="h-7 w-auto" />
+            <img src={logobg} alt="Gestion Locative" className="h-7 w-auto brightness-0 invert" />
           </Link>
           <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)}
             className="text-white hover:bg-navy-700 h-9 w-9">

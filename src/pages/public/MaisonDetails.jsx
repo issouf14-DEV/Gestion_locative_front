@@ -508,7 +508,7 @@ export default function MaisonDetails() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
             <div className="col-span-1 md:col-span-1 space-y-6">
               <Link to="/">
-                <img src={logobg} alt="Gestion Locative" className="h-8 w-auto" />
+                <img src={logobg} alt="Gestion Locative" className="h-8 w-auto brightness-0 invert" />
               </Link>
               <p className="text-navy-200 text-sm leading-relaxed">
                 Leader de la gestion immobiliere digitale en Cote d'Ivoire.
