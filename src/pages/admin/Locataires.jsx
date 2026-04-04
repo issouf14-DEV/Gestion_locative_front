@@ -594,14 +594,14 @@ const [deleteId, setDeleteId] = useState(null);
   const total = data?.count || data?.data?.count || 0;
   const totalPages = data?.total_pages || Math.ceil(total / 20);
 
-  // Build rental map
+  // Build rental map — clé en String pour éviter les mismatch int/string
   const rentalsByLocataire = useMemo(() => {
     const rentals = rentalsData?.data?.results || rentalsData?.results || rentalsData?.data || [];
     const map = new Map();
     if (Array.isArray(rentals)) {
       rentals.forEach(r => {
-        const locId = r.locataire?.id || r.locataire_id || r.locataire;
-        if (locId) map.set(locId, r);
+        const locId = r.locataire?.id ?? r.locataire_id ?? r.locataire;
+        if (locId != null) map.set(String(locId), r);
       });
     }
     return map;
@@ -682,8 +682,8 @@ const [deleteId, setDeleteId] = useState(null);
     const mLabel = MOIS.find(m => m.value === activeMois)?.label || activeMois;
     const headers = ['Nom', 'Prenom', 'Email', 'Telephone', 'Maison', 'Statut', 'Mois', 'Annee', 'Loyer', 'Date paiement loyer', 'SODECI', 'Date paiement SODECI'];
     const rows = filteredLocataires.map(loc => {
-      const rental = rentalsByLocataire.get(loc.id);
-      const maisonName = rental?.maison_titre || '-';
+      const rental = rentalsByLocataire.get(String(loc.id));
+      const maisonName = rental?.maison?.titre || rental?.maison?.nom || rental?.maison_titre || rental?.maison_nom || '-';
       const loyerF = loyersFactures.find(f => (f.locataire || f.locataire_id) === loc.id);
       const sodeciF = sodeciFactures.find(f => (f.locataire || f.locataire_id) === loc.id);
       return [
@@ -818,8 +818,13 @@ const [deleteId, setDeleteId] = useState(null);
                   </TableHeader>
                   <TableBody>
                     {filteredLocataires.map((loc) => {
-                      const rental = rentalsByLocataire.get(loc.id);
-                      const maisonName = rental?.maison_titre || rental?.maison?.titre || loc.maison_titre || '-';
+                      const rental = rentalsByLocataire.get(String(loc.id));
+                      const maisonName = rental?.maison?.titre
+                        || rental?.maison?.nom
+                        || rental?.maison_titre
+                        || rental?.maison_nom
+                        || loc.maison_titre
+                        || '-';
                       return (
                         <TableRow key={loc.id}>
                           <TableCell><Checkbox checked={selected.includes(loc.id)} onCheckedChange={() => toggleSelect(loc.id)} /></TableCell>
