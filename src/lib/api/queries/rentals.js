@@ -44,7 +44,18 @@ export const useCreateLocation = () => {
       toast.success('Location créée avec succès');
     },
     onError: (error) => {
-      toast.error(error.response?.data?.message || 'Erreur lors de la création');
+      const data = error.response?.data;
+      if (data?.errors) {
+        Object.values(data.errors).flat().forEach(m => toast.error(m));
+      } else if (data && typeof data === 'object' && !data.message) {
+        // DRF renvoie parfois {champ: ["erreur"]} directement
+        Object.entries(data).forEach(([k, v]) => {
+          const msgs = Array.isArray(v) ? v : [v];
+          msgs.forEach(m => toast.error(`${k} : ${m}`));
+        });
+      } else {
+        toast.error(data?.message || data?.detail || 'Erreur lors de la création de la location');
+      }
     },
   });
 };

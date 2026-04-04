@@ -68,7 +68,9 @@ function CreateLocataireDialog({ open, onOpenChange }) {
   const { mutate: createUser, isPending } = useCreateUser();
   const { data: maisonsData } = useMaisons({ statut: 'DISPONIBLE' });
   const { mutate: createLocation } = useCreateLocation();
-  const maisons = maisonsData?.data?.results || maisonsData?.results || maisonsData?.data || [];
+  const maisons = Array.isArray(maisonsData)
+    ? maisonsData
+    : (maisonsData?.data?.results || maisonsData?.results || maisonsData?.data || []);
 
   const [maisonId, setMaisonId] = useState('');
   const [dateDebut, setDateDebut] = useState('');
@@ -418,7 +420,9 @@ function EditLocataireDialog({ open, onOpenChange, locataire, rental, maisonsMap
   const { mutate: updateUser, isPending: isUpdating } = useUpdateUser();
   const { mutate: createLocation, isPending: isCreatingLoc } = useCreateLocation();
   const { data: maisonsData } = useMaisons({ statut: 'DISPONIBLE' });
-  const maisons = maisonsData?.data?.results || maisonsData?.results || maisonsData?.data || [];
+  const maisons = Array.isArray(maisonsData)
+    ? maisonsData
+    : (maisonsData?.data?.results || maisonsData?.results || maisonsData?.data || []);
 
   const [maisonId, setMaisonId] = useState('');
   const [dateDebut, setDateDebut] = useState('');
@@ -686,7 +690,9 @@ const [deleteId, setDeleteId] = useState(null);
 
   // Map id → maison pour fallback quand l'API renvoie maison comme un ID entier
   const maisonsMap = useMemo(() => {
-    const list = allMaisonsData?.data?.results || allMaisonsData?.results || allMaisonsData?.data || [];
+    const list = Array.isArray(allMaisonsData)
+      ? allMaisonsData
+      : (allMaisonsData?.data?.results || allMaisonsData?.results || allMaisonsData?.data || []);
     const map = new Map();
     if (Array.isArray(list)) list.forEach(m => map.set(String(m.id), m));
     return map;
@@ -694,7 +700,10 @@ const [deleteId, setDeleteId] = useState(null);
 
   // Build rental map — clé en String pour éviter les mismatch int/string
   const rentalsByLocataire = useMemo(() => {
-    const rentals = rentalsData?.data?.results || rentalsData?.results || rentalsData?.data || [];
+    // L'API peut renvoyer un tableau plat OU un objet paginé {results:[...]}
+    const rentals = Array.isArray(rentalsData)
+      ? rentalsData
+      : (rentalsData?.data?.results || rentalsData?.results || rentalsData?.data || []);
     const map = new Map();
     if (Array.isArray(rentals)) {
       rentals.forEach(r => {
