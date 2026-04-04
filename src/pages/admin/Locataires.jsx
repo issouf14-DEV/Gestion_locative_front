@@ -414,20 +414,50 @@ function NotifDialog({ open, onOpenChange, selectedIds, locataires }) {
 }
 
 
-function EditLocataireDialog({ open, onOpenChange, locataire }) {
-  const { mutate: updateUser, isPending } = useUpdateUser();
+function EditLocataireDialog({ open, onOpenChange, locataire, rental }) {
+  const { mutate: updateUser, isPending: isUpdating } = useUpdateUser();
+  const { mutate: createLocation, isPending: isCreatingLoc } = useCreateLocation();
+  const { data: maisonsData } = useMaisons({ statut: 'DISPONIBLE' });
+  const maisons = maisonsData?.data?.results || maisonsData?.results || maisonsData?.data || [];
+
+  const [maisonId, setMaisonId] = useState('');
+  const [dateDebut, setDateDebut] = useState('');
+  const [dureeMois, setDureeMois] = useState('12');
+  const [loyer, setLoyer] = useState('');
+
+  const isPending = isUpdating || isCreatingLoc;
+
+  // Nom de la maison actuelle (si location active)
+  const currentMaisonNom = rental?.maison?.titre || rental?.maison?.nom || rental?.maison_titre || null;
+
   const { register, handleSubmit, reset, formState: { errors } } = useForm({
     resolver: zodResolver(editLocataireSchema),
     values: locataire ? { nom: locataire.nom || '', prenoms: locataire.prenoms || '', email: locataire.email || '', telephone: locataire.telephone || '' } : undefined,
   });
 
+  const handleClose = () => { reset(); setMaisonId(''); setDateDebut(''); setDureeMois('12'); setLoyer(''); onOpenChange(false); };
+
   const onSubmit = (data) => {
-    updateUser({ id: locataire.id, data }, { onSuccess: () => { reset(); onOpenChange(false); } });
+    updateUser({ id: locataire.id, data }, {
+      onSuccess: () => {
+        if (!rental && maisonId && dateDebut && loyer) {
+          createLocation({
+            locataire: locataire.id,
+            maison: Number(maisonId),
+            date_debut: dateDebut,
+            duree_mois: Number(dureeMois),
+            loyer_mensuel: Number(loyer),
+          }, { onSettled: handleClose });
+        } else {
+          handleClose();
+        }
+      },
+    });
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
-      <DialogContent className="max-w-md">
+    <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Modifier le locataire</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-4 py-2">
@@ -437,9 +467,52 @@ function EditLocataireDialog({ open, onOpenChange, locataire }) {
             </div>
             <div className="space-y-1"><Label>Email *</Label><Input type="email" placeholder="jean@exemple.com" {...register('email')} />{errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}</div>
             <div className="space-y-1"><Label>Téléphone *</Label><Input placeholder="+225 07 00 00 00 00" {...register('telephone')} />{errors.telephone && <p className="text-xs text-red-500">{errors.telephone.message}</p>}</div>
+
+            {/* Section maison */}
+            <div className="border-t pt-3">
+              <p className="text-sm font-medium mb-2">Maison occupée</p>
+              {currentMaisonNom ? (
+                <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm text-green-800">
+                  <span className="font-medium">{currentMaisonNom}</span>
+                  <span className="text-xs text-green-600 ml-auto">Location active</span>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <Label>Affecter à une maison disponible</Label>
+                    <Select value={maisonId} onValueChange={setMaisonId}>
+                      <SelectTrigger><SelectValue placeholder="Sélectionner une maison..." /></SelectTrigger>
+                      <SelectContent>
+                        {maisons.map(m => (
+                          <SelectItem key={m.id} value={String(m.id)}>{m.titre} — {formatCurrency(m.prix)}/mois</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {maisonId && (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label>Date de début</Label>
+                          <Input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label>Durée (mois)</Label>
+                          <Input type="number" value={dureeMois} onChange={e => setDureeMois(e.target.value)} min="1" />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Loyer mensuel (FCFA)</Label>
+                        <Input type="number" placeholder="150000" value={loyer} onChange={e => setLoyer(e.target.value)} />
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           <DialogFooter className="mt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
+            <Button type="button" variant="outline" onClick={handleClose}>Annuler</Button>
             <Button type="submit" variant="navy" disabled={isPending}>{isPending ? 'Enregistrement...' : 'Enregistrer'}</Button>
           </DialogFooter>
         </form>
@@ -913,7 +986,7 @@ const [deleteId, setDeleteId] = useState(null);
 
       <CreateLocataireDialog open={createOpen} onOpenChange={setCreateOpen} />
       <NotifDialog open={notifOpen} onOpenChange={setNotifOpen} selectedIds={selected} locataires={locataires} />
-<EditLocataireDialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) setEditLocataire(null); }} locataire={editLocataire} />
+<EditLocataireDialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) setEditLocataire(null); }} locataire={editLocataire} rental={editLocataire ? rentalsByLocataire.get(String(editLocataire.id)) : null} />
       <StatutValidationDialog
         open={statutValidOpen}
         onOpenChange={setStatutValidOpen}
