@@ -38,7 +38,8 @@ const locataireSchema = z.object({
   nom: z.string().min(2, 'Nom requis'),
   prenoms: z.string().min(2, 'Prénom(s) requis'),
   email: z.string().email('Email invalide'),
-  telephone: z.string().min(8, 'Téléphone requis'),
+  telephone: z.string().optional().or(z.literal('')),
+  adresse: z.string().optional().or(z.literal('')),
   password: z.string().min(8, 'Mot de passe min. 8 caractères'),
   password2: z.string().min(1, 'Confirmation requise'),
 }).refine(d => d.password === d.password2, {
@@ -78,7 +79,15 @@ function CreateLocataireDialog({ open, onOpenChange }) {
   });
 
   const onSubmit = (data) => {
-    createUser({ ...data, role: 'LOCATAIRE' }, {
+    // Retirer password2 (confirmation) et les champs vides optionnels avant l'envoi
+    const { password2, telephone, adresse, ...rest } = data;
+    const payload = {
+      ...rest,
+      role: 'LOCATAIRE',
+      ...(telephone ? { telephone } : {}),
+      ...(adresse ? { adresse } : {}),
+    };
+    createUser(payload, {
       onSuccess: (res) => {
         const userId = res.data?.data?.id || res.data?.id;
         if (maisonId && userId && dateDebut && loyer) {
@@ -116,9 +125,13 @@ function CreateLocataireDialog({ open, onOpenChange }) {
               {errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}
             </div>
             <div className="space-y-1">
-              <Label>Téléphone *</Label>
+              <Label>Téléphone <span className="text-muted-foreground text-xs">(optionnel)</span></Label>
               <Input placeholder="+225 07 00 00 00 00" {...register('telephone')} />
               {errors.telephone && <p className="text-xs text-red-500">{errors.telephone.message}</p>}
+            </div>
+            <div className="space-y-1">
+              <Label>Adresse <span className="text-muted-foreground text-xs">(optionnel)</span></Label>
+              <Input placeholder="Quartier, ville..." {...register('adresse')} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">

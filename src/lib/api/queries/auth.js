@@ -69,10 +69,17 @@ export const useLogout = () => {
 
 export const usePasswordChange = () => {
   return useMutation({
-    mutationFn: (data) => api.post(AUTH.PASSWORD_CHANGE, data),
+    mutationFn: (data) => api.post(AUTH.PASSWORD_CHANGE, {
+      old_password: data.ancien_mot_de_passe ?? data.old_password,
+      new_password: data.nouveau_mot_de_passe ?? data.new_password,
+    }),
     onSuccess: () => toast.success('Mot de passe modifié avec succès'),
     onError: (error) => {
-      toast.error(error.response?.data?.message || 'Erreur lors du changement de mot de passe');
+      const msg = error.response?.data?.old_password?.[0]
+        || error.response?.data?.new_password?.[0]
+        || error.response?.data?.message
+        || 'Erreur lors du changement de mot de passe';
+      toast.error(msg);
     },
   });
 };
@@ -104,6 +111,25 @@ export const usePasswordReset = () => {
     onSuccess: () => toast.success('Email de réinitialisation envoyé'),
     onError: (error) => {
       toast.error(error.response?.data?.message || 'Erreur lors de l\'envoi');
+    },
+  });
+};
+
+export const usePasswordResetConfirm = () => {
+  return useMutation({
+    mutationFn: (data) => api.post(AUTH.PASSWORD_RESET_CONFIRM, {
+      uid: data.uid,
+      token: data.token,
+      new_password: data.new_password,
+    }),
+    onSuccess: () => toast.success('Mot de passe réinitialisé avec succès'),
+    onError: (error) => {
+      const msg = error.response?.data?.token?.[0]
+        || error.response?.data?.uid?.[0]
+        || error.response?.data?.new_password?.[0]
+        || error.response?.data?.message
+        || 'Lien invalide ou expiré. Recommencez la procédure.';
+      toast.error(msg);
     },
   });
 };

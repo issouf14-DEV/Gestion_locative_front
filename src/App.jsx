@@ -10,6 +10,7 @@ const MaisonDetails = lazy(() => import('@/pages/public/MaisonDetails'));
 const Login = lazy(() => import('@/pages/public/Login'));
 const Register = lazy(() => import('@/pages/public/Register'));
 const ForgotPassword = lazy(() => import('@/pages/public/ForgotPassword'));
+const ResetPassword = lazy(() => import('@/pages/public/ResetPassword'));
 
 // Admin pages
 const AdminLayout = lazy(() => import('@/components/layout/AdminLayout'));
@@ -61,6 +62,7 @@ export default function App() {
           <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
           <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
           <Route path="/forgot-password" element={<PublicOnlyRoute><ForgotPassword /></PublicOnlyRoute>} />
+          <Route path="/reset-password/:uid/:token" element={<ResetPassword />} />
 
           {/* Admin routes */}
           <Route path="/admin" element={
