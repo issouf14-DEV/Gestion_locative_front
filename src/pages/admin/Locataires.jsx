@@ -414,7 +414,7 @@ function NotifDialog({ open, onOpenChange, selectedIds, locataires }) {
 }
 
 
-function EditLocataireDialog({ open, onOpenChange, locataire, rental }) {
+function EditLocataireDialog({ open, onOpenChange, locataire, rental, maisonsMap }) {
   const { mutate: updateUser, isPending: isUpdating } = useUpdateUser();
   const { mutate: createLocation, isPending: isCreatingLoc } = useCreateLocation();
   const { data: maisonsData } = useMaisons({ statut: 'DISPONIBLE' });
@@ -427,8 +427,13 @@ function EditLocataireDialog({ open, onOpenChange, locataire, rental }) {
 
   const isPending = isUpdating || isCreatingLoc;
 
-  // Nom de la maison actuelle (si location active)
-  const currentMaisonNom = rental?.maison?.titre || rental?.maison?.nom || rental?.maison_titre || null;
+  // Présence d'une location active (indépendamment du format de maison retourné par l'API)
+  const hasActiveRental = !!rental;
+
+  // Nom de la maison : objet imbriqué OU résolution depuis maisonsMap si l'API renvoie un ID entier
+  const maisonRawId = rental?.maison != null && typeof rental.maison !== 'object' ? String(rental.maison) : null;
+  const maisonFromMap = maisonRawId && maisonsMap ? maisonsMap.get(maisonRawId) : null;
+  const currentMaisonNom = rental?.maison?.titre || rental?.maison?.nom || maisonFromMap?.titre || maisonFromMap?.nom || rental?.maison_titre || (maisonRawId ? `Maison #${maisonRawId}` : null);
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm({
     resolver: zodResolver(editLocataireSchema),
@@ -471,9 +476,9 @@ function EditLocataireDialog({ open, onOpenChange, locataire, rental }) {
             {/* Section maison */}
             <div className="border-t pt-3">
               <p className="text-sm font-medium mb-2">Maison occupée</p>
-              {currentMaisonNom ? (
+              {hasActiveRental ? (
                 <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm text-green-800">
-                  <span className="font-medium">{currentMaisonNom}</span>
+                  <span className="font-medium">{currentMaisonNom || 'Location active'}</span>
                   <span className="text-xs text-green-600 ml-auto">Location active</span>
                 </div>
               ) : (
@@ -986,7 +991,7 @@ const [deleteId, setDeleteId] = useState(null);
 
       <CreateLocataireDialog open={createOpen} onOpenChange={setCreateOpen} />
       <NotifDialog open={notifOpen} onOpenChange={setNotifOpen} selectedIds={selected} locataires={locataires} />
-<EditLocataireDialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) setEditLocataire(null); }} locataire={editLocataire} rental={editLocataire ? rentalsByLocataire.get(String(editLocataire.id)) : null} />
+<EditLocataireDialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) setEditLocataire(null); }} locataire={editLocataire} rental={editLocataire ? rentalsByLocataire.get(String(editLocataire.id)) : null} maisonsMap={maisonsMap} />
       <StatutValidationDialog
         open={statutValidOpen}
         onOpenChange={setStatutValidOpen}
