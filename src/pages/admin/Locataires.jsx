@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/table';
 import PageHeader from '@/components/common/PageHeader';
 import StatCard from '@/components/common/StatCard';
+import PasswordInput from '@/components/common/PasswordInput';
 import EmptyState from '@/components/common/EmptyState';
 import { useUsers, useCreateUser, useUpdateUserStatus, useDeleteUser, useUpdateUser } from '@/lib/api/queries/users';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
@@ -74,9 +75,10 @@ function CreateLocataireDialog({ open, onOpenChange }) {
   const [dureeMois, setDureeMois] = useState('12');
   const [loyer, setLoyer] = useState('');
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm({
+  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm({
     resolver: zodResolver(locataireSchema),
   });
+  const watchedPassword = watch('password', '');
 
   const onSubmit = (data) => {
     // Retirer password2 (confirmation) et les champs vides optionnels avant l'envoi
@@ -134,16 +136,22 @@ function CreateLocataireDialog({ open, onOpenChange }) {
               <Input placeholder="Quartier, ville..." {...register('adresse')} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Mot de passe *</Label>
-                <Input type="password" placeholder="Min. 8 car." {...register('password')} />
-                {errors.password && <p className="text-xs text-red-500">{errors.password.message}</p>}
-              </div>
-              <div className="space-y-1">
-                <Label>Confirmation *</Label>
-                <Input type="password" placeholder="Retaper" {...register('password2')} />
-                {errors.password2 && <p className="text-xs text-red-500">{errors.password2.message}</p>}
-              </div>
+              <PasswordInput
+                id="loc-password"
+                label="Mot de passe temporaire *"
+                placeholder="Ex: Abcd1234!"
+                registerProps={register('password')}
+                error={errors.password}
+                showRules
+                watchValue={watchedPassword}
+              />
+              <PasswordInput
+                id="loc-password2"
+                label="Confirmer *"
+                placeholder="Retaper le même"
+                registerProps={register('password2')}
+                error={errors.password2}
+              />
             </div>
             <div className="border-t pt-3">
               <p className="text-sm font-medium text-navy-800 mb-3">Affecter à une maison (optionnel)</p>

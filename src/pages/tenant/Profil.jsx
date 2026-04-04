@@ -1,21 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Eye, EyeOff, User, Shield, FileText, Save, Lock, CheckCircle } from 'lucide-react';
+import { User, Shield, FileText, Save } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Progress } from '@/components/ui/progress';
 
 import PageHeader from '@/components/common/PageHeader';
+import PasswordInput from '@/components/common/PasswordInput';
 import { useMe, useUpdateUser } from '@/lib/api/queries/users';
 import { usePasswordChange } from '@/lib/api/queries/auth';
 import { useMaLocation } from '@/lib/api/queries/rentals';
@@ -51,72 +51,6 @@ const passwordSchema = z
     message: 'Les mots de passe ne correspondent pas',
     path: ['confirmer_mot_de_passe'],
   });
-
-// ─── Indicateur de force du mot de passe ────────────────────────────────────
-
-function getPasswordStrength(password) {
-  if (!password) return { score: 0, label: '', color: '' };
-  let score = 0;
-  if (password.length >= 8) score++;
-  if (password.length >= 12) score++;
-  if (/[A-Z]/.test(password)) score++;
-  if (/[0-9]/.test(password)) score++;
-  if (/[^A-Za-z0-9]/.test(password)) score++;
-
-  if (score <= 2) return { score: 33, label: 'Faible', color: 'bg-red-500' };
-  if (score <= 3) return { score: 66, label: 'Moyen', color: 'bg-yellow-500' };
-  return { score: 100, label: 'Fort', color: 'bg-green-500' };
-}
-
-function PasswordStrengthIndicator({ password }) {
-  const strength = getPasswordStrength(password);
-  if (!password) return null;
-  return (
-    <div className="mt-2 space-y-1">
-      <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-        <div
-          className={`h-full transition-all duration-300 rounded-full ${strength.color}`}
-          style={{ width: `${strength.score}%` }}
-        />
-      </div>
-      <p className={`text-xs font-medium ${
-        strength.score <= 33 ? 'text-red-500' :
-        strength.score <= 66 ? 'text-yellow-600' : 'text-green-600'
-      }`}>
-        Force : {strength.label}
-      </p>
-    </div>
-  );
-}
-
-// ─── Champ mot de passe avec toggle ─────────────────────────────────────────
-
-function PasswordField({ label, id, register, error, watch }) {
-  const [visible, setVisible] = useState(false);
-  return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      <div className="relative">
-        <Input
-          id={id}
-          type={visible ? 'text' : 'password'}
-          className="pr-10"
-          {...register}
-        />
-        <button
-          type="button"
-          onClick={() => setVisible((v) => !v)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-navy-800 transition-colors"
-          tabIndex={-1}
-          aria-label={visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
-        >
-          {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-        </button>
-      </div>
-      {error && <p className="text-xs text-red-500">{error.message}</p>}
-    </div>
-  );
-}
 
 // ─── Onglet Informations personnelles ───────────────────────────────────────
 
@@ -264,7 +198,6 @@ function TabProfil({ user }) {
 
 function TabSecurite() {
   const passwordChange = usePasswordChange();
-  const [nouveauMdp, setNouveauMdp] = useState('');
 
   const {
     register,
@@ -289,12 +222,7 @@ function TabSecurite() {
         ancien_mot_de_passe: data.ancien_mot_de_passe,
         nouveau_mot_de_passe: data.nouveau_mot_de_passe,
       },
-      {
-        onSuccess: () => {
-          reset();
-          setNouveauMdp('');
-        },
-      }
+      { onSuccess: () => reset() }
     );
   };
 
@@ -311,52 +239,29 @@ function TabSecurite() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-        <PasswordField
+        <PasswordInput
           label="Ancien mot de passe *"
           id="ancien_mot_de_passe"
-          register={register('ancien_mot_de_passe')}
+          placeholder="Votre mot de passe actuel"
+          registerProps={register('ancien_mot_de_passe')}
           error={errors.ancien_mot_de_passe}
         />
 
-        <div className="space-y-1.5">
-          <Label htmlFor="nouveau_mot_de_passe">Nouveau mot de passe *</Label>
-          <div className="relative">
-            <PasswordFieldInner
-              id="nouveau_mot_de_passe"
-              register={register('nouveau_mot_de_passe', {
-                onChange: (e) => setNouveauMdp(e.target.value),
-              })}
-            />
-          </div>
-          {errors.nouveau_mot_de_passe && (
-            <p className="text-xs text-red-500">
-              {errors.nouveau_mot_de_passe.message}
-            </p>
-          )}
-          <PasswordStrengthIndicator password={watchedNew} />
-          <ul className="mt-2 space-y-1">
-            {[
-              { ok: watchedNew.length >= 8, label: 'Au moins 8 caractères' },
-              { ok: /[A-Z]/.test(watchedNew), label: 'Au moins une majuscule' },
-              { ok: /[0-9]/.test(watchedNew), label: 'Au moins un chiffre' },
-            ].map(({ ok, label }) => (
-              <li
-                key={label}
-                className={`flex items-center gap-1.5 text-xs ${
-                  ok ? 'text-green-600' : 'text-muted-foreground'
-                }`}
-              >
-                <CheckCircle className={`h-3 w-3 ${ok ? 'text-green-500' : 'text-muted-foreground/40'}`} />
-                {label}
-              </li>
-            ))}
-          </ul>
-        </div>
+        <PasswordInput
+          label="Nouveau mot de passe *"
+          id="nouveau_mot_de_passe"
+          placeholder="Ex: Abcd1234!"
+          registerProps={register('nouveau_mot_de_passe')}
+          error={errors.nouveau_mot_de_passe}
+          showRules
+          watchValue={watchedNew}
+        />
 
-        <PasswordField
+        <PasswordInput
           label="Confirmer le nouveau mot de passe *"
           id="confirmer_mot_de_passe"
-          register={register('confirmer_mot_de_passe')}
+          placeholder="Retaper le même mot de passe"
+          registerProps={register('confirmer_mot_de_passe')}
           error={errors.confirmer_mot_de_passe}
         />
 
@@ -367,32 +272,10 @@ function TabSecurite() {
             style={{ backgroundColor: 'var(--accent)' }}
             className="hover:opacity-90 text-white"
           >
-            <Lock className="h-4 w-4 mr-2" />
-            {passwordChange.isPending
-              ? 'Modification...'
-              : 'Changer le mot de passe'}
+            {passwordChange.isPending ? 'Modification...' : 'Changer le mot de passe'}
           </Button>
         </div>
       </form>
-    </div>
-  );
-}
-
-// Sous-composant interne pour le champ mot de passe avec toggle
-function PasswordFieldInner({ id, register }) {
-  const [visible, setVisible] = useState(false);
-  return (
-    <div className="relative">
-      <Input id={id} type={visible ? 'text' : 'password'} className="pr-10" {...register} />
-      <button
-        type="button"
-        onClick={() => setVisible((v) => !v)}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-navy-800 transition-colors"
-        tabIndex={-1}
-        aria-label={visible ? 'Masquer' : 'Afficher'}
-      >
-        {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-      </button>
     </div>
   );
 }

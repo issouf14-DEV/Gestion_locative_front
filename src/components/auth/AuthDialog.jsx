@@ -2,10 +2,11 @@ import { useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Eye, EyeOff, Lock, Mail, User, Phone, ArrowRight } from 'lucide-react';
+import { Mail, User, Phone, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import PasswordInput from '@/components/common/PasswordInput';
 import { Separator } from '@/components/ui/separator';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -83,36 +84,6 @@ function GoogleButton({ label, onSuccess }) {
   );
 }
 
-// ─── Password Input ─────────────────────────────────────────────────────────
-
-function PasswordField({ id, label, placeholder, registerProps, error }) {
-  const [visible, setVisible] = useState(false);
-  return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id} className="text-sm font-medium text-gray-700">{label}</Label>
-      <div className="relative">
-        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-        <Input
-          id={id}
-          type={visible ? 'text' : 'password'}
-          placeholder={placeholder}
-          className="pl-9 pr-10 h-10 border-gray-300 focus:border-navy-500 focus:ring-navy-500"
-          {...registerProps}
-        />
-        <button
-          type="button"
-          onClick={() => setVisible(v => !v)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-          tabIndex={-1}
-        >
-          {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-        </button>
-      </div>
-      {error && <p className="text-xs text-red-500">{error.message}</p>}
-    </div>
-  );
-}
-
 // ─── Login Form ─────────────────────────────────────────────────────────────
 
 function LoginForm({ onSuccess, onSwitchToRegister }) {
@@ -159,7 +130,7 @@ function LoginForm({ onSuccess, onSwitchToRegister }) {
           {errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}
         </div>
 
-        <PasswordField
+        <PasswordInput
           id="login-password"
           label="Mot de passe"
           placeholder="Votre mot de passe"
@@ -201,9 +172,10 @@ function RegisterForm({ onSuccess, onGoogleSuccess, onSwitchToLogin }) {
   const { mutate: registerUser, isPending } = useRegister();
   const { mutate: googleAuth } = useGoogleAuth();
 
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, handleSubmit, watch, formState: { errors } } = useForm({
     resolver: zodResolver(registerSchema),
   });
+  const watchedPassword = watch('password', '');
 
   const onSubmit = (data) => {
     registerUser({ ...data, role: 'LOCATAIRE' }, {
@@ -274,27 +246,22 @@ function RegisterForm({ onSuccess, onGoogleSuccess, onSwitchToLogin }) {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <PasswordField
+          <PasswordInput
             id="reg-password"
             label="Mot de passe"
-            placeholder="Min. 8 car."
+            placeholder="Ex: Abcd1234!"
             registerProps={register('password')}
             error={errors.password}
+            showRules
+            watchValue={watchedPassword}
           />
-          <div className="space-y-1.5">
-            <Label htmlFor="reg-password2" className="text-sm font-medium text-gray-700">Confirmer</Label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                id="reg-password2"
-                type="password"
-                placeholder="Confirmer"
-                className="pl-9 h-10 border-gray-300"
-                {...register('password2')}
-              />
-            </div>
-            {errors.password2 && <p className="text-xs text-red-500">{errors.password2.message}</p>}
-          </div>
+          <PasswordInput
+            id="reg-password2"
+            label="Confirmer"
+            placeholder="Retaper le même"
+            registerProps={register('password2')}
+            error={errors.password2}
+          />
         </div>
 
         <Button
