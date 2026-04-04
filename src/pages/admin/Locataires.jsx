@@ -94,11 +94,14 @@ function CreateLocataireDialog({ open, onOpenChange }) {
         const userId = res.data?.data?.id || res.data?.id;
         if (maisonId && userId && dateDebut && loyer) {
           createLocation({
-            locataire: userId, maison: maisonId, date_debut: dateDebut,
+            locataire: userId, maison: Number(maisonId), date_debut: dateDebut,
             duree_mois: Number(dureeMois), loyer_mensuel: Number(loyer),
+          }, {
+            onSettled: () => { reset(); onOpenChange(false); },
           });
+        } else {
+          reset(); onOpenChange(false);
         }
-        reset(); onOpenChange(false);
       },
     });
   };
@@ -588,6 +591,7 @@ const [deleteId, setDeleteId] = useState(null);
 
   const { data, isLoading } = useUsers({ role: 'LOCATAIRE', search: search || undefined, page, page_size: 20 });
   const { data: rentalsData } = useLocationsActives();
+  const { data: allMaisonsData } = useMaisons();
   const { mutate: updateStatus } = useUpdateUserStatus();
   const { mutate: deleteUser, isPending: isDeleting } = useDeleteUser();
 
@@ -601,6 +605,14 @@ const [deleteId, setDeleteId] = useState(null);
   const locataires = data?.results || data?.data?.results || data?.data || [];
   const total = data?.count || data?.data?.count || 0;
   const totalPages = data?.total_pages || Math.ceil(total / 20);
+
+  // Map id → maison pour fallback quand l'API renvoie maison comme un ID entier
+  const maisonsMap = useMemo(() => {
+    const list = allMaisonsData?.data?.results || allMaisonsData?.results || allMaisonsData?.data || [];
+    const map = new Map();
+    if (Array.isArray(list)) list.forEach(m => map.set(String(m.id), m));
+    return map;
+  }, [allMaisonsData]);
 
   // Build rental map — clé en String pour éviter les mismatch int/string
   const rentalsByLocataire = useMemo(() => {
@@ -648,15 +660,16 @@ const [deleteId, setDeleteId] = useState(null);
   }, [loyersFactures, sodeciFactures, activeMois, activeAnnee]);
 
   // Compute auto-status: à jour = loyer payé + sodeci payé
-  const getAutoStatut = (locId, apiStatut) => {
+  // Si aucune facture n'existe pour ce locataire sur la période → EN_RETARD (pas de paiement confirmé)
+  const getAutoStatut = (locId) => {
     const ps = paymentStatusMap.get(locId);
-    if (!ps) return apiStatut === 'A_JOUR' ? 'A_JOUR' : 'EN_RETARD';
+    if (!ps) return 'EN_RETARD';
     return (ps.loyerPaye && ps.sodeciPaye) ? 'A_JOUR' : 'EN_RETARD';
   };
 
   const locatairesWithStatus = locataires.map(loc => ({
     ...loc,
-    computedStatut: getAutoStatut(loc.id, loc.statut),
+    computedStatut: getAutoStatut(loc.id),
     paymentInfo: paymentStatusMap.get(loc.id) || { loyerPaye: false, sodeciPaye: false },
   }));
 
@@ -827,8 +840,12 @@ const [deleteId, setDeleteId] = useState(null);
                   <TableBody>
                     {filteredLocataires.map((loc) => {
                       const rental = rentalsByLocataire.get(String(loc.id));
+                      const maisonRawId = rental?.maison != null && typeof rental.maison !== 'object' ? String(rental.maison) : null;
+                      const maisonFromMap = maisonRawId ? maisonsMap.get(maisonRawId) : null;
                       const maisonName = rental?.maison?.titre
                         || rental?.maison?.nom
+                        || maisonFromMap?.titre
+                        || maisonFromMap?.nom
                         || rental?.maison_titre
                         || rental?.maison_nom
                         || loc.maison_titre

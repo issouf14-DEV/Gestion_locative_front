@@ -39,6 +39,8 @@ export const useCreateLocation = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['locations'] });
       qc.invalidateQueries({ queryKey: ['maisons'] });
+      qc.invalidateQueries({ queryKey: ['users'] });
+      qc.invalidateQueries({ queryKey: ['locataires'] });
       toast.success('Location créée avec succès');
     },
     onError: (error) => {
