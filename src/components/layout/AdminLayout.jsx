@@ -220,7 +220,7 @@ export default function AdminLayout() {
           </Button>
         </header>
 
-        <main className="flex-1 overflow-y-auto px-3 py-4 sm:px-4 sm:py-4 pb-20 lg:pb-4">
+        <main className="flex-1 overflow-y-auto px-3 py-4 sm:px-4 sm:py-4 pb-safe-nav lg:pb-4">
           <Outlet />
         </main>
       </div>

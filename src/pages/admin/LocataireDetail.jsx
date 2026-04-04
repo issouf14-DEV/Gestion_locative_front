@@ -289,9 +289,9 @@ export default function AdminLocataireDetail() {
                   <TableRow>
                     <TableHead>Date</TableHead>
                     <TableHead>Montant</TableHead>
-                    <TableHead>Mode</TableHead>
-                    <TableHead>Référence</TableHead>
-                    <TableHead>Preuve</TableHead>
+                    <TableHead className="hidden sm:table-cell">Mode</TableHead>
+                    <TableHead className="hidden md:table-cell">Référence</TableHead>
+                    <TableHead className="hidden sm:table-cell">Preuve</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -300,9 +300,9 @@ export default function AdminLocataireDetail() {
                     <TableRow key={p.id}>
                       <TableCell className="text-sm">{formatDate(p.created_at || p.date_soumission)}</TableCell>
                       <TableCell className="font-semibold text-navy-800">{formatCurrency(p.montant)}</TableCell>
-                      <TableCell className="text-sm">{p.mode_paiement}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{p.reference_paiement || '-'}</TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell text-sm">{p.mode_paiement}</TableCell>
+                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{p.reference_paiement || '-'}</TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         {p.preuve_paiement ? (
                           <a href={p.preuve_paiement} target="_blank" rel="noreferrer">
                             <Button size="sm" variant="ghost" className="h-7 px-2 text-xs">
@@ -316,7 +316,7 @@ export default function AdminLocataireDetail() {
                           <Button
                             size="sm"
                             variant="navy"
-                            className="h-7 px-2 text-xs"
+                            className="h-8 px-3 text-xs"
                             onClick={() => setValiderPaiement(p)}
                           >
                             Traiter

@@ -187,8 +187,8 @@ export default function TenantLayout() {
           </Button>
         </header>
 
-        {/* Contenu principal — padding-bottom pour la bottom nav */}
-        <main className="flex-1 overflow-y-auto pb-16 lg:pb-0">
+        {/* Contenu principal — padding-bottom pour la bottom nav + safe area iOS */}
+        <main className="flex-1 overflow-y-auto pb-safe-nav lg:pb-0">
           <div className="p-4 sm:p-6 lg:p-8">
             <Outlet />
           </div>

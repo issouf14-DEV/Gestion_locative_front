@@ -86,6 +86,26 @@
 }
 
 /* ── Responsive mobile global ───────────────────────────────────────────── */
+@layer base {
+  /* Supprime le délai de 300ms au tap sur tous les éléments interactifs */
+  button, a, [role="button"], input, select, textarea, label {
+    touch-action: manipulation;
+  }
+
+  /* Empêche iOS de zoomer sur les inputs (font-size min 16px) */
+  @media (max-width: 640px) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+  }
+
+  /* Empêche le redimensionnement automatique du texte sur iOS */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+}
+
 @layer utilities {
   /* Dialogs plein écran sur mobile */
   @media (max-width: 640px) {
@@ -94,10 +114,6 @@
       max-height: 95dvh !important;
       border-bottom-left-radius: 0 !important;
       border-bottom-right-radius: 0 !important;
-    }
-    /* Toutes les tables scrollent horizontalement */
-    table {
-      min-width: 100%;
     }
     /* Inputs et selects pleine largeur */
     .sm\:w-44 {
@@ -109,8 +125,14 @@
   body {
     overflow-x: hidden;
   }
+
   /* Zone de sécurité iOS pour la bottom nav */
   .safe-area-inset-bottom {
     padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Padding inférieur tenant de la bottom nav + safe area iOS */
+  .pb-safe-nav {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
   }
 }

@@ -526,61 +526,97 @@ export default function TenantDashboard() {
                   className="py-8"
                 />
               ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/40">
-                        <TableHead className="text-xs">Type</TableHead>
-                        <TableHead className="text-xs">Mois</TableHead>
-                        <TableHead className="text-xs">Montant</TableHead>
-                        <TableHead className="text-xs">Statut</TableHead>
-                        <TableHead className="text-xs">Soumis le</TableHead>
-                        <TableHead className="text-xs text-right">Action</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {chargesRecentes.map((charge) => (
-                        <TableRow key={`${charge.type}-${charge.id}`} className="hover:bg-muted/20">
-                          <TableCell>
-                            <div className="flex items-center gap-2 text-sm font-medium">
+                <>
+                  {/* Vue cartes sur mobile */}
+                  <div className="md:hidden divide-y">
+                    {chargesRecentes.map((charge) => {
+                      const periode = charge.mois && charge.annee
+                        ? formatMonthYear(charge.mois, charge.annee)
+                        : charge.periode || '—';
+                      return (
+                        <div key={`${charge.type}-${charge.id}`} className="flex items-center justify-between px-4 py-3 gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="shrink-0 p-2 rounded-lg bg-muted">
                               {getChargeIcon(charge.type)}
-                              {charge.type}
                             </div>
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {charge.mois && charge.annee
-                              ? formatMonthYear(charge.mois, charge.annee)
-                              : charge.periode || '—'}
-                          </TableCell>
-                          <TableCell className="text-sm font-semibold text-[var(--primary)]">
-                            {charge.montant ? formatCurrency(charge.montant) : '—'}
-                          </TableCell>
-                          <TableCell>{getStatutBadge(charge.statut)}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
-                            {charge.date_soumission
-                              ? formatDate(charge.date_soumission)
-                              : '—'}
-                          </TableCell>
-                          <TableCell className="text-right">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-[var(--primary)] truncate">{charge.type}</p>
+                              <p className="text-xs text-muted-foreground">{periode}</p>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            <p className="text-sm font-bold text-[var(--primary)]">
+                              {charge.montant ? formatCurrency(charge.montant) : '—'}
+                            </p>
                             {charge.is_pending && charge.id ? (
                               <Button
                                 size="sm"
-                                className="bg-[var(--accent)] hover:bg-[#6a1b38] text-white text-xs h-7 px-3"
-                                onClick={() =>
-                                  navigate(`/tenant/charges/${charge.id}/paiement`)
-                                }
+                                className="bg-[var(--accent)] hover:bg-[#6a1b38] text-white text-xs h-8 px-3"
+                                onClick={() => navigate(`/tenant/charges/${charge.id}/paiement`)}
                               >
                                 Payer
                               </Button>
                             ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
+                              getStatutBadge(charge.statut)
                             )}
-                          </TableCell>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* Tableau sur desktop */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/40">
+                          <TableHead className="text-xs">Type</TableHead>
+                          <TableHead className="text-xs">Mois</TableHead>
+                          <TableHead className="text-xs">Montant</TableHead>
+                          <TableHead className="text-xs">Statut</TableHead>
+                          <TableHead className="text-xs">Soumis le</TableHead>
+                          <TableHead className="text-xs text-right">Action</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                      </TableHeader>
+                      <TableBody>
+                        {chargesRecentes.map((charge) => (
+                          <TableRow key={`${charge.type}-${charge.id}`} className="hover:bg-muted/20">
+                            <TableCell>
+                              <div className="flex items-center gap-2 text-sm font-medium">
+                                {getChargeIcon(charge.type)}
+                                {charge.type}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {charge.mois && charge.annee
+                                ? formatMonthYear(charge.mois, charge.annee)
+                                : charge.periode || '—'}
+                            </TableCell>
+                            <TableCell className="text-sm font-semibold text-[var(--primary)]">
+                              {charge.montant ? formatCurrency(charge.montant) : '—'}
+                            </TableCell>
+                            <TableCell>{getStatutBadge(charge.statut)}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground">
+                              {charge.date_soumission ? formatDate(charge.date_soumission) : '—'}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {charge.is_pending && charge.id ? (
+                                <Button
+                                  size="sm"
+                                  className="bg-[var(--accent)] hover:bg-[#6a1b38] text-white text-xs h-7 px-3"
+                                  onClick={() => navigate(`/tenant/charges/${charge.id}/paiement`)}
+                                >
+                                  Payer
+                                </Button>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -610,43 +646,74 @@ export default function TenantDashboard() {
               className="py-8"
             />
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/40">
-                    <TableHead className="text-xs">Référence</TableHead>
-                    <TableHead className="text-xs">Type</TableHead>
-                    <TableHead className="text-xs">Montant</TableHead>
-                    <TableHead className="text-xs">Date soumission</TableHead>
-                    <TableHead className="text-xs">Statut</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paiementsRecents.map((p) => (
-                    <TableRow key={p.id} className="hover:bg-muted/20">
-                      <TableCell className="text-xs font-mono text-muted-foreground">
-                        {p.reference || p.id || '—'}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2 text-sm">
-                          {getChargeIcon(p.type || p.type_paiement)}
-                          <span>{p.type || p.type_paiement || '—'}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm font-semibold text-[var(--primary)]">
+            <>
+              {/* Vue cartes sur mobile */}
+              <div className="md:hidden divide-y">
+                {paiementsRecents.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between px-4 py-3 gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="shrink-0 p-2 rounded-lg bg-muted">
+                        {getChargeIcon(p.type || p.type_paiement)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-[var(--primary)] truncate">
+                          {p.type || p.type_paiement || '—'}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {p.date_soumission || p.created_at
+                            ? formatDate(p.date_soumission || p.created_at)
+                            : '—'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <p className="text-sm font-bold text-[var(--primary)]">
                         {p.montant ? formatCurrency(p.montant) : '—'}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {p.date_soumission || p.created_at
-                          ? formatDateLong(p.date_soumission || p.created_at)
-                          : '—'}
-                      </TableCell>
-                      <TableCell>{getPaiementBadge(p.statut)}</TableCell>
+                      </p>
+                      {getPaiementBadge(p.statut)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* Tableau sur desktop */}
+              <div className="hidden md:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/40">
+                      <TableHead className="text-xs">Référence</TableHead>
+                      <TableHead className="text-xs">Type</TableHead>
+                      <TableHead className="text-xs">Montant</TableHead>
+                      <TableHead className="text-xs">Date soumission</TableHead>
+                      <TableHead className="text-xs">Statut</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {paiementsRecents.map((p) => (
+                      <TableRow key={p.id} className="hover:bg-muted/20">
+                        <TableCell className="text-xs font-mono text-muted-foreground">
+                          {p.reference || p.id || '—'}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2 text-sm">
+                            {getChargeIcon(p.type || p.type_paiement)}
+                            <span>{p.type || p.type_paiement || '—'}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm font-semibold text-[var(--primary)]">
+                          {p.montant ? formatCurrency(p.montant) : '—'}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {p.date_soumission || p.created_at
+                            ? formatDateLong(p.date_soumission || p.created_at)
+                            : '—'}
+                        </TableCell>
+                        <TableCell>{getPaiementBadge(p.statut)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

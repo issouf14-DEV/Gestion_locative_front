@@ -246,16 +246,16 @@ export default function AdminDashboard() {
       {/* Period selector + PDF download */}
       <Card>
         <CardContent className="p-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Filter className="h-4 w-4 text-muted-foreground" />
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2">
+            <Filter className="hidden sm:block h-4 w-4 text-muted-foreground shrink-0" />
             <Select value={mois} onValueChange={setMois}>
-              <SelectTrigger className="w-32 h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-32 h-9 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {MOIS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={annee} onValueChange={setAnnee}>
-              <SelectTrigger className="w-20 h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-20 h-9 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {ANNEES.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
               </SelectContent>
@@ -263,7 +263,7 @@ export default function AdminDashboard() {
             <Button
               size="sm"
               variant="navy"
-              className="h-8 text-xs ml-auto"
+              className="col-span-2 w-full sm:w-auto h-9 text-xs sm:ml-auto"
               onClick={() => downloadRapport({ mois: Number(mois), annee: Number(annee) })}
               disabled={isDownloading}
             >
