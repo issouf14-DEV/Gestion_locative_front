@@ -64,6 +64,63 @@ const editLocataireSchema = z.object({
 
 // ─── Dialogs ────────────────────────────────────────────────────────────────
 
+// Champs maison partagés entre Create et Edit
+function MaisonFields({ maisonId, setMaisonId, dateDebut, setDateDebut, dureeMois, setDureeMois, loyer, setLoyer, caution, setCaution, maisons }) {
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1">
+        <Label>Maison disponible</Label>
+        <Select value={maisonId} onValueChange={setMaisonId}>
+          <SelectTrigger><SelectValue placeholder="Sélectionner une maison..." /></SelectTrigger>
+          <SelectContent>
+            {maisons.map(m => (
+              <SelectItem key={m.id} value={String(m.id)}>{m.titre} — {formatCurrency(m.prix)}/mois</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {maisonId && (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>Date de début *</Label>
+              <Input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label>Durée (mois)</Label>
+              <Input type="number" value={dureeMois} onChange={e => setDureeMois(e.target.value)} min="1" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>Loyer mensuel (FCFA) *</Label>
+              <Input type="number" placeholder="150000" value={loyer} onChange={e => setLoyer(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label>Caution (FCFA)</Label>
+              <Input type="number" placeholder="0" value={caution} onChange={e => setCaution(e.target.value)} />
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function buildLocationPayload({ locataireId, maisonId, dateDebut, dureeMois, loyer, caution }) {
+  return {
+    locataire: Number(locataireId),
+    maison: Number(maisonId),
+    date_debut: dateDebut,
+    duree_mois: Number(dureeMois) || 12,
+    loyer_mensuel: Number(loyer),
+    caution: Number(caution) || 0,
+    avance_loyer_mois: 0,
+    frais_agence: 0,
+    charges_mensuelles: 0,
+  };
+}
+
 function CreateLocataireDialog({ open, onOpenChange }) {
   const { mutate: createUser, isPending } = useCreateUser();
   const { data: maisonsData } = useMaisons({ statut: 'DISPONIBLE' });
@@ -76,14 +133,19 @@ function CreateLocataireDialog({ open, onOpenChange }) {
   const [dateDebut, setDateDebut] = useState('');
   const [dureeMois, setDureeMois] = useState('12');
   const [loyer, setLoyer] = useState('');
+  const [caution, setCaution] = useState('');
 
   const { register, handleSubmit, reset, watch, formState: { errors } } = useForm({
     resolver: zodResolver(locataireSchema),
   });
   const watchedPassword = watch('password', '');
 
+  const resetForm = () => {
+    reset();
+    setMaisonId(''); setDateDebut(''); setDureeMois('12'); setLoyer(''); setCaution('');
+  };
+
   const onSubmit = (data) => {
-    // Retirer password2 (confirmation) et les champs vides optionnels avant l'envoi
     const { password2, telephone, adresse, ...rest } = data;
     const payload = {
       ...rest,
@@ -95,21 +157,18 @@ function CreateLocataireDialog({ open, onOpenChange }) {
       onSuccess: (res) => {
         const userId = res.data?.data?.id || res.data?.id;
         if (maisonId && userId && dateDebut && loyer) {
-          createLocation({
-            locataire: userId, maison: Number(maisonId), date_debut: dateDebut,
-            duree_mois: Number(dureeMois), loyer_mensuel: Number(loyer),
-          }, {
-            onSettled: () => { reset(); onOpenChange(false); },
+          createLocation(buildLocationPayload({ locataireId: userId, maisonId, dateDebut, dureeMois, loyer, caution }), {
+            onSettled: () => { resetForm(); onOpenChange(false); },
           });
         } else {
-          reset(); onOpenChange(false);
+          resetForm(); onOpenChange(false);
         }
       },
     });
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
       <DialogContent className="w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Ajouter un locataire</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -134,7 +193,6 @@ function CreateLocataireDialog({ open, onOpenChange }) {
             <div className="space-y-1">
               <Label>Téléphone <span className="text-muted-foreground text-xs">(optionnel)</span></Label>
               <Input placeholder="+225 07 00 00 00 00" {...register('telephone')} />
-              {errors.telephone && <p className="text-xs text-red-500">{errors.telephone.message}</p>}
             </div>
             <div className="space-y-1">
               <Label>Adresse <span className="text-muted-foreground text-xs">(optionnel)</span></Label>
@@ -159,42 +217,12 @@ function CreateLocataireDialog({ open, onOpenChange }) {
               />
             </div>
             <div className="border-t pt-3">
-              <p className="text-sm font-medium text-navy-800 mb-3">Affecter à une maison (optionnel)</p>
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <Label>Maison disponible</Label>
-                  <Select value={maisonId} onValueChange={setMaisonId}>
-                    <SelectTrigger><SelectValue placeholder="Sélectionner une maison..." /></SelectTrigger>
-                    <SelectContent>
-                      {maisons.map(m => (
-                        <SelectItem key={m.id} value={String(m.id)}>{m.titre} — {formatCurrency(m.prix)}/mois</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {maisonId && (
-                  <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label>Date de début</Label>
-                        <Input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} />
-                      </div>
-                      <div className="space-y-1">
-                        <Label>Durée (mois)</Label>
-                        <Input type="number" value={dureeMois} onChange={e => setDureeMois(e.target.value)} min="1" />
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <Label>Loyer mensuel (FCFA)</Label>
-                      <Input type="number" placeholder="150000" value={loyer} onChange={e => setLoyer(e.target.value)} />
-                    </div>
-                  </>
-                )}
-              </div>
+              <p className="text-sm font-medium mb-2">Affecter à une maison <span className="text-muted-foreground text-xs font-normal">(optionnel)</span></p>
+              <MaisonFields maisonId={maisonId} setMaisonId={setMaisonId} dateDebut={dateDebut} setDateDebut={setDateDebut} dureeMois={dureeMois} setDureeMois={setDureeMois} loyer={loyer} setLoyer={setLoyer} caution={caution} setCaution={setCaution} maisons={maisons} />
             </div>
           </div>
           <DialogFooter className="mt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
+            <Button type="button" variant="outline" onClick={() => { resetForm(); onOpenChange(false); }}>Annuler</Button>
             <Button type="submit" variant="navy" disabled={isPending}>{isPending ? 'Création...' : 'Créer le locataire'}</Button>
           </DialogFooter>
         </form>
@@ -428,13 +456,14 @@ function EditLocataireDialog({ open, onOpenChange, locataire, rental, maisonsMap
   const [dateDebut, setDateDebut] = useState('');
   const [dureeMois, setDureeMois] = useState('12');
   const [loyer, setLoyer] = useState('');
+  const [caution, setCaution] = useState('');
 
   const isPending = isUpdating || isCreatingLoc;
 
-  // Présence d'une location active (indépendamment du format de maison retourné par l'API)
+  // Présence d'une location active (indépendamment du format retourné par l'API)
   const hasActiveRental = !!rental;
 
-  // Nom de la maison : objet imbriqué OU résolution depuis maisonsMap si l'API renvoie un ID entier
+  // Nom de la maison : objet imbriqué OU résolution via maisonsMap si l'API renvoie un ID entier
   const maisonRawId = rental?.maison != null && typeof rental.maison !== 'object' ? String(rental.maison) : null;
   const maisonFromMap = maisonRawId && maisonsMap ? maisonsMap.get(maisonRawId) : null;
   const currentMaisonNom = rental?.maison?.titre || rental?.maison?.nom || maisonFromMap?.titre || maisonFromMap?.nom || rental?.maison_titre || (maisonRawId ? `Maison #${maisonRawId}` : null);
@@ -444,19 +473,16 @@ function EditLocataireDialog({ open, onOpenChange, locataire, rental, maisonsMap
     values: locataire ? { nom: locataire.nom || '', prenoms: locataire.prenoms || '', email: locataire.email || '', telephone: locataire.telephone || '' } : undefined,
   });
 
-  const handleClose = () => { reset(); setMaisonId(''); setDateDebut(''); setDureeMois('12'); setLoyer(''); onOpenChange(false); };
+  const handleClose = () => { reset(); setMaisonId(''); setDateDebut(''); setDureeMois('12'); setLoyer(''); setCaution(''); onOpenChange(false); };
 
   const onSubmit = (data) => {
     updateUser({ id: locataire.id, data }, {
       onSuccess: () => {
-        if (!rental && maisonId && dateDebut && loyer) {
-          createLocation({
-            locataire: locataire.id,
-            maison: Number(maisonId),
-            date_debut: dateDebut,
-            duree_mois: Number(dureeMois),
-            loyer_mensuel: Number(loyer),
-          }, { onSettled: handleClose });
+        if (!hasActiveRental && maisonId && dateDebut && loyer) {
+          createLocation(
+            buildLocationPayload({ locataireId: locataire.id, maisonId, dateDebut, dureeMois, loyer, caution }),
+            { onSettled: handleClose }
+          );
         } else {
           handleClose();
         }
@@ -486,37 +512,10 @@ function EditLocataireDialog({ open, onOpenChange, locataire, rental, maisonsMap
                   <span className="text-xs text-green-600 ml-auto">Location active</span>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <Label>Affecter à une maison disponible</Label>
-                    <Select value={maisonId} onValueChange={setMaisonId}>
-                      <SelectTrigger><SelectValue placeholder="Sélectionner une maison..." /></SelectTrigger>
-                      <SelectContent>
-                        {maisons.map(m => (
-                          <SelectItem key={m.id} value={String(m.id)}>{m.titre} — {formatCurrency(m.prix)}/mois</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {maisonId && (
-                    <>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <Label>Date de début</Label>
-                          <Input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label>Durée (mois)</Label>
-                          <Input type="number" value={dureeMois} onChange={e => setDureeMois(e.target.value)} min="1" />
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <Label>Loyer mensuel (FCFA)</Label>
-                        <Input type="number" placeholder="150000" value={loyer} onChange={e => setLoyer(e.target.value)} />
-                      </div>
-                    </>
-                  )}
-                </div>
+                <>
+                  <p className="text-xs text-muted-foreground mb-2">Aucune maison assignée — affecter une maison disponible :</p>
+                  <MaisonFields maisonId={maisonId} setMaisonId={setMaisonId} dateDebut={dateDebut} setDateDebut={setDateDebut} dureeMois={dureeMois} setDureeMois={setDureeMois} loyer={loyer} setLoyer={setLoyer} caution={caution} setCaution={setCaution} maisons={maisons} />
+                </>
               )}
             </div>
           </div>
