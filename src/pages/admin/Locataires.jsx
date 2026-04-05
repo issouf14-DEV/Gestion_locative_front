@@ -27,7 +27,7 @@ import EmptyState from '@/components/common/EmptyState';
 import { useUsers, useCreateUser, useUpdateUserStatus, useDeleteUser, useUpdateUser } from '@/lib/api/queries/users';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { useMaisons } from '@/lib/api/queries/properties';
-import { useCreateLocation, useLocationsActives } from '@/lib/api/queries/rentals';
+import { useCreateLocation } from '@/lib/api/queries/rentals';
 import { useEnvoyerNotifTousLocataires, useEnvoyerNotification } from '@/lib/api/queries/notifications';
 import { cleanPhoneForWhatsApp } from '@/lib/utils/whatsapp';
 import { toast } from 'sonner';
@@ -444,7 +444,7 @@ function NotifDialog({ open, onOpenChange, selectedIds, locataires }) {
 }
 
 
-function EditLocataireDialog({ open, onOpenChange, locataire, rental, maisonsMap }) {
+function EditLocataireDialog({ open, onOpenChange, locataire, rental }) {
   const { mutate: updateUser, isPending: isUpdating } = useUpdateUser();
   const { mutate: createLocation, isPending: isCreatingLoc } = useCreateLocation();
   const { data: maisonsData } = useMaisons({ statut: 'DISPONIBLE' });
@@ -463,10 +463,7 @@ function EditLocataireDialog({ open, onOpenChange, locataire, rental, maisonsMap
   // Présence d'une location active (indépendamment du format retourné par l'API)
   const hasActiveRental = !!rental;
 
-  // Nom de la maison : objet imbriqué OU résolution via maisonsMap si l'API renvoie un ID entier
-  const maisonRawId = rental?.maison != null && typeof rental.maison !== 'object' ? String(rental.maison) : null;
-  const maisonFromMap = maisonRawId && maisonsMap ? maisonsMap.get(maisonRawId) : null;
-  const currentMaisonNom = rental?.maison?.titre || rental?.maison?.nom || maisonFromMap?.titre || maisonFromMap?.nom || rental?.maison_titre || (maisonRawId ? `Maison #${maisonRawId}` : null);
+  const currentMaisonNom = rental?.maison?.titre || rental?.maison?.nom || rental?.maison_titre || null;
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm({
     resolver: zodResolver(editLocataireSchema),
@@ -671,8 +668,6 @@ const [deleteId, setDeleteId] = useState(null);
   const activeAnnee = filterAnnee || String(currentAnnee);
 
   const { data, isLoading } = useUsers({ role: 'LOCATAIRE', search: search || undefined, page, page_size: 20 });
-  const { data: rentalsData } = useLocationsActives();
-  const { data: allMaisonsData } = useMaisons();
   const { mutate: updateStatus } = useUpdateUserStatus();
   const { mutate: deleteUser, isPending: isDeleting } = useDeleteUser();
 
@@ -687,31 +682,9 @@ const [deleteId, setDeleteId] = useState(null);
   const total = data?.count || data?.data?.count || 0;
   const totalPages = data?.total_pages || Math.ceil(total / 20);
 
-  // Map id → maison pour fallback quand l'API renvoie maison comme un ID entier
-  const maisonsMap = useMemo(() => {
-    const list = Array.isArray(allMaisonsData)
-      ? allMaisonsData
-      : (allMaisonsData?.data?.results || allMaisonsData?.results || allMaisonsData?.data || []);
-    const map = new Map();
-    if (Array.isArray(list)) list.forEach(m => map.set(String(m.id), m));
-    return map;
-  }, [allMaisonsData]);
-
-  // Build rental map — clé en String pour éviter les mismatch int/string
-  const rentalsByLocataire = useMemo(() => {
-    // L'API peut renvoyer un tableau plat OU un objet paginé {results:[...]}
-    const rentals = Array.isArray(rentalsData)
-      ? rentalsData
-      : (rentalsData?.data?.results || rentalsData?.results || rentalsData?.data || []);
-    const map = new Map();
-    if (Array.isArray(rentals)) {
-      rentals.forEach(r => {
-        const locId = r.locataire?.id ?? r.locataire_id ?? r.locataire;
-        if (locId != null) map.set(String(locId), r);
-      });
-    }
-    return map;
-  }, [rentalsData]);
+  // Le backend inclut location_active directement dans l'objet user (comme dans LocataireDetail)
+  // Pas besoin de /rentals/actives/ — on utilise loc.location_active || loc.location
+  const getLocationForLocataire = (loc) => loc.location_active || loc.location || null;
 
   // Build payment status map per locataire from REAL facture data
   const paymentStatusMap = useMemo(() => {
@@ -789,7 +762,7 @@ const [deleteId, setDeleteId] = useState(null);
     const mLabel = MOIS.find(m => m.value === activeMois)?.label || activeMois;
     const headers = ['Nom', 'Prenom', 'Email', 'Telephone', 'Maison', 'Statut', 'Mois', 'Annee', 'Loyer', 'Date paiement loyer', 'SODECI', 'Date paiement SODECI'];
     const rows = filteredLocataires.map(loc => {
-      const rental = rentalsByLocataire.get(String(loc.id));
+      const rental = getLocationForLocataire(loc);
       const maisonName = rental?.maison?.titre || rental?.maison?.nom || rental?.maison_titre || rental?.maison_nom || '-';
       const loyerF = loyersFactures.find(f => (f.locataire || f.locataire_id) === loc.id);
       const sodeciF = sodeciFactures.find(f => (f.locataire || f.locataire_id) === loc.id);
@@ -925,16 +898,11 @@ const [deleteId, setDeleteId] = useState(null);
                   </TableHeader>
                   <TableBody>
                     {filteredLocataires.map((loc) => {
-                      const rental = rentalsByLocataire.get(String(loc.id));
-                      const maisonRawId = rental?.maison != null && typeof rental.maison !== 'object' ? String(rental.maison) : null;
-                      const maisonFromMap = maisonRawId ? maisonsMap.get(maisonRawId) : null;
+                      const rental = getLocationForLocataire(loc);
                       const maisonName = rental?.maison?.titre
                         || rental?.maison?.nom
-                        || maisonFromMap?.titre
-                        || maisonFromMap?.nom
                         || rental?.maison_titre
                         || rental?.maison_nom
-                        || loc.maison_titre
                         || '-';
                       return (
                         <TableRow key={loc.id}>
@@ -999,7 +967,7 @@ const [deleteId, setDeleteId] = useState(null);
 
       <CreateLocataireDialog open={createOpen} onOpenChange={setCreateOpen} />
       <NotifDialog open={notifOpen} onOpenChange={setNotifOpen} selectedIds={selected} locataires={locataires} />
-<EditLocataireDialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) setEditLocataire(null); }} locataire={editLocataire} rental={editLocataire ? rentalsByLocataire.get(String(editLocataire.id)) : null} maisonsMap={maisonsMap} />
+<EditLocataireDialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) setEditLocataire(null); }} locataire={editLocataire} rental={editLocataire ? getLocationForLocataire(editLocataire) : null} />
       <StatutValidationDialog
         open={statutValidOpen}
         onOpenChange={setStatutValidOpen}
