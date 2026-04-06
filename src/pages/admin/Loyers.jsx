@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Banknote, CheckCircle, XCircle, MessageSquare, History, Download, Trash2, Filter, TrendingUp, Home, RotateCcw } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -176,6 +177,9 @@ export default function AdminLoyers() {
 
   const [paymentHistoryOpen, setPaymentHistoryOpen] = useState(false);
   const [deleteAllConfirm, setDeleteAllConfirm] = useState(false);
+  const [selected, setSelected] = useState([]);
+  const [deleteMultiOpen, setDeleteMultiOpen] = useState(false);
+  const [isDeletingMulti, setIsDeletingMulti] = useState(false);
   const genererLoyersMutation = useGenererLoyers();
   const { mutate: deleteFacture, isPending: isDeletingFacture } = useDeleteFacture();
 
@@ -268,6 +272,20 @@ export default function AdminLoyers() {
         },
       });
     });
+  };
+
+  const toggleSelect = (id) => setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  const toggleAll = () => selected.length === filteredFactures.length ? setSelected([]) : setSelected(filteredFactures.map(f => f.id));
+
+  const handleDeleteMulti = async () => {
+    setIsDeletingMulti(true);
+    try {
+      await Promise.all(selected.map(id => deleteFacture(id)));
+      setSelected([]);
+      setDeleteMultiOpen(false);
+    } finally {
+      setIsDeletingMulti(false);
+    }
   };
 
   const handleGenererLoyers = () => {
@@ -449,6 +467,17 @@ export default function AdminLoyers() {
         />
       </div>
 
+      {/* Barre actions groupées */}
+      {selected.length > 0 && (
+        <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+          <span className="text-sm font-medium text-red-800">{selected.length} sélectionné(s)</span>
+          <Button size="sm" variant="destructive" onClick={() => setDeleteMultiOpen(true)}>
+            <Trash2 className="h-3.5 w-3.5 mr-1" />Supprimer la sélection
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setSelected([])}>Annuler</Button>
+        </div>
+      )}
+
       {/* Table */}
       <Card>
         <CardContent className="p-0">
@@ -475,6 +504,12 @@ export default function AdminLoyers() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/40">
+                      <TableHead className="w-10">
+                        <Checkbox
+                          checked={filteredFactures.length > 0 && selected.length === filteredFactures.length}
+                          onCheckedChange={toggleAll}
+                        />
+                      </TableHead>
                       <TableHead className="text-xs font-semibold">Locataire</TableHead>
                       <TableHead className="text-xs font-semibold hidden sm:table-cell">Maison</TableHead>
                       <TableHead className="text-xs font-semibold">Montant</TableHead>
@@ -488,7 +523,13 @@ export default function AdminLoyers() {
                     {filteredFactures.map((f) => {
                       const isPaye = f.effectiveStatut === 'PAYEE';
                       return (
-                        <TableRow key={f.id} className="hover:bg-muted/20 transition-colors">
+                        <TableRow key={f.id} className={`hover:bg-muted/20 transition-colors ${selected.includes(f.id) ? 'bg-red-50' : ''}`}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selected.includes(f.id)}
+                              onCheckedChange={() => toggleSelect(f.id)}
+                            />
+                          </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isPaye ? 'bg-green-50' : 'bg-red-50'}`}>
@@ -579,6 +620,16 @@ export default function AdminLoyers() {
         confirmLabel="Supprimer tout"
         onConfirm={handleDeleteAllLoyers}
         isLoading={isDeletingFacture}
+        variant="destructive"
+      />
+      <ConfirmDialog
+        open={deleteMultiOpen}
+        onOpenChange={setDeleteMultiOpen}
+        title={`Supprimer ${selected.length} loyer(s)`}
+        description="Cette action est irréversible. Les loyers sélectionnés seront définitivement supprimés."
+        confirmLabel="Supprimer"
+        onConfirm={handleDeleteMulti}
+        isLoading={isDeletingMulti}
         variant="destructive"
       />
     </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Trash2, Pencil, Receipt, TrendingDown, Download, History, ChevronDown, ChevronUp, Search, Filter, Calendar, Home, X } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -350,6 +351,9 @@ export default function AdminDepenses() {
   const [formOpen, setFormOpen] = useState(false);
   const [editDepense, setEditDepense] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
+  const [selected, setSelected] = useState([]);
+  const [deleteMultiOpen, setDeleteMultiOpen] = useState(false);
+  const [isDeletingMulti, setIsDeletingMulti] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [filterCategorie, setFilterCategorie] = useState('');
@@ -427,6 +431,20 @@ export default function AdminDepenses() {
 
   // Has any filter active?
   const hasFilters = searchText || filterCategorie || filterDateDebut || filterDateFin || filterMaison || filterMois || filterAnnee || statFilter;
+
+  const toggleSelect = (id) => setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  const toggleAll = () => selected.length === depenses.length ? setSelected([]) : setSelected(depenses.map(d => d.id));
+
+  const handleDeleteMulti = async () => {
+    setIsDeletingMulti(true);
+    try {
+      await Promise.all(selected.map(id => deleteDepense(id)));
+      setSelected([]);
+      setDeleteMultiOpen(false);
+    } finally {
+      setIsDeletingMulti(false);
+    }
+  };
 
   const resetAllFilters = () => {
     setSearchText('');
@@ -695,6 +713,17 @@ export default function AdminDepenses() {
         </CardContent>
       </Card>
 
+      {/* Barre actions groupées */}
+      {selected.length > 0 && (
+        <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+          <span className="text-sm font-medium text-red-800">{selected.length} sélectionnée(s)</span>
+          <Button size="sm" variant="destructive" onClick={() => setDeleteMultiOpen(true)}>
+            <Trash2 className="h-3.5 w-3.5 mr-1" />Supprimer la sélection
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setSelected([])}>Annuler</Button>
+        </div>
+      )}
+
       {/* Table */}
       <Card>
         <CardContent className="p-0">
@@ -716,6 +745,12 @@ export default function AdminDepenses() {
                 <Table className="min-w-[580px]">
                   <TableHeader>
                     <TableRow className="bg-navy-50/50">
+                      <TableHead className="w-10">
+                        <Checkbox
+                          checked={depenses.length > 0 && selected.length === depenses.length}
+                          onCheckedChange={toggleAll}
+                        />
+                      </TableHead>
                       <TableHead className="text-xs font-semibold">Date</TableHead>
                       <TableHead className="text-xs font-semibold">Description</TableHead>
                       <TableHead className="text-xs font-semibold">Categorie</TableHead>
@@ -726,7 +761,13 @@ export default function AdminDepenses() {
                   </TableHeader>
                   <TableBody>
                     {depenses.map((d, idx) => (
-                      <TableRow key={d.id} className={idx % 2 === 0 ? '' : 'bg-muted/20'}>
+                      <TableRow key={d.id} className={`${idx % 2 === 0 ? '' : 'bg-muted/20'} ${selected.includes(d.id) ? 'bg-red-50' : ''}`}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selected.includes(d.id)}
+                            onCheckedChange={() => toggleSelect(d.id)}
+                          />
+                        </TableCell>
                         <TableCell className="text-sm whitespace-nowrap">
                           <div className="flex items-center gap-1.5">
                             <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
@@ -828,6 +869,16 @@ export default function AdminDepenses() {
         confirmLabel="Supprimer"
         onConfirm={() => deleteDepense(deleteId, { onSuccess: () => setDeleteId(null) })}
         isLoading={isDeleting}
+        variant="destructive"
+      />
+      <ConfirmDialog
+        open={deleteMultiOpen}
+        onOpenChange={setDeleteMultiOpen}
+        title={`Supprimer ${selected.length} dépense(s)`}
+        description="Cette action est irréversible. Les dépenses sélectionnées seront définitivement supprimées."
+        confirmLabel="Supprimer"
+        onConfirm={handleDeleteMulti}
+        isLoading={isDeletingMulti}
         variant="destructive"
       />
       <DepenseHistoryDialog open={historyOpen} onOpenChange={setHistoryOpen} />

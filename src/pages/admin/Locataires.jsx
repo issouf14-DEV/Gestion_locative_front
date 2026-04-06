@@ -659,7 +659,9 @@ export default function AdminLocataires() {
   const [createOpen, setCreateOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [selected, setSelected] = useState([]);
-const [deleteId, setDeleteId] = useState(null);
+  const [deleteId, setDeleteId] = useState(null);
+  const [deleteMultiOpen, setDeleteMultiOpen] = useState(false);
+  const [isDeletingMulti, setIsDeletingMulti] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editLocataire, setEditLocataire] = useState(null);
   const [statutValidOpen, setStatutValidOpen] = useState(false);
@@ -746,6 +748,17 @@ const [deleteId, setDeleteId] = useState(null);
   const toggleAll = () => {
     if (selected.length === filteredLocataires.length) setSelected([]);
     else setSelected(filteredLocataires.map(l => l.id));
+  };
+
+  const handleDeleteMulti = async () => {
+    setIsDeletingMulti(true);
+    try {
+      await Promise.all(selected.map(id => deleteUser(id)));
+      setSelected([]);
+      setDeleteMultiOpen(false);
+    } finally {
+      setIsDeletingMulti(false);
+    }
   };
 
 
@@ -869,9 +882,11 @@ const [deleteId, setDeleteId] = useState(null);
 
       {/* Grouped actions */}
       {selected.length > 0 && (
-        <div className="flex items-center gap-2 bg-navy-50 border border-navy-200 rounded-lg px-4 py-2">
+        <div className="flex items-center gap-2 bg-navy-50 border border-navy-200 rounded-lg px-4 py-2 flex-wrap">
           <span className="text-sm text-navy-800 font-medium">{selected.length} sélectionné(s)</span>
           <Button size="sm" variant="navy" onClick={() => setNotifOpen(true)}><Send className="h-3 w-3 mr-1" />Notifier</Button>
+          <Button size="sm" variant="destructive" onClick={() => setDeleteMultiOpen(true)}><Trash2 className="h-3 w-3 mr-1" />Supprimer</Button>
+          <Button size="sm" variant="outline" onClick={() => setSelected([])}>Annuler</Button>
         </div>
       )}
 
@@ -982,6 +997,16 @@ const [deleteId, setDeleteId] = useState(null);
         confirmLabel="Supprimer"
         onConfirm={() => deleteUser(deleteId, { onSuccess: () => setDeleteId(null) })}
         isLoading={isDeleting}
+        variant="destructive"
+      />
+      <ConfirmDialog
+        open={deleteMultiOpen}
+        onOpenChange={setDeleteMultiOpen}
+        title={`Supprimer ${selected.length} locataire(s)`}
+        description="Cette action est irréversible. Les locataires sélectionnés seront définitivement supprimés."
+        confirmLabel="Supprimer"
+        onConfirm={handleDeleteMulti}
+        isLoading={isDeletingMulti}
         variant="destructive"
       />
     </div>

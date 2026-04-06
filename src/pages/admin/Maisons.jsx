@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Plus, Pencil, Trash2, Image, Search, Home, Building } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -26,7 +27,7 @@ import {
   useMaisons, useCreateMaison, useUpdateMaison,
   useDeleteMaison, useAjouterImages
 } from '@/lib/api/queries/properties';
-import { useLocationsActives } from '@/lib/api/queries/rentals';
+import { useUsers } from '@/lib/api/queries/users';
 import api from '@/lib/api/axios';
 import { PROPERTIES } from '@/lib/api/endpoints';
 import { formatCurrency } from '@/lib/utils/formatters';
@@ -359,18 +360,21 @@ export default function AdminMaisons() {
   const [formOpen, setFormOpen] = useState(false);
   const [editMaison, setEditMaison] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
+  const [selected, setSelected] = useState([]);
+  const [deleteMultiOpen, setDeleteMultiOpen] = useState(false);
+  const [isDeletingMulti, setIsDeletingMulti] = useState(false);
 
   const { data, isLoading } = useMaisons({ search: search || undefined, statut: statut || undefined, page, page_size: 10 });
   // Fetch ALL maisons (no filter) to compute accurate stats
   const { data: allMaisonsData } = useMaisons({ page_size: 200 });
   const { mutate: deleteMaison, isPending: isDeleting } = useDeleteMaison();
-  const { data: rentalsData } = useLocationsActives();
-  const rentals = rentalsData?.results || rentalsData?.data?.results || rentalsData?.data || [];
-  const rentalByMaison = new Map();
-  rentals.forEach(r => {
-    const mid = r.maison;
-    if (!rentalByMaison.has(mid)) rentalByMaison.set(mid, []);
-    rentalByMaison.get(mid).push(r);
+  const { data: locatairesData } = useUsers({ role: 'LOCATAIRE', page_size: 100 });
+  const locataires = locatairesData?.results || locatairesData?.data?.results || locatairesData?.data || [];
+  // Build map: maison.id -> locataire nom, using location_active embedded in each user
+  const locataireByMaison = new Map();
+  locataires.forEach(loc => {
+    const maisonId = loc.location_active?.maison?.id;
+    if (maisonId) locataireByMaison.set(maisonId, `${loc.prenoms || ''} ${loc.nom || ''}`.trim());
   });
   
   
@@ -408,6 +412,20 @@ export default function AdminMaisons() {
   const statsDisponibles = toutesLesMaisons.filter(m => m.statut === 'DISPONIBLE').length;
   const statsOccupees = toutesLesMaisons.filter(m => m.statut === 'LOUEE').length;
   const statsMaintenance = toutesLesMaisons.filter(m => m.statut === 'EN_MAINTENANCE').length;
+
+  const toggleSelect = (id) => setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  const toggleAll = () => selected.length === maisons.length ? setSelected([]) : setSelected(maisons.map(m => m.id));
+
+  const handleDeleteMulti = async () => {
+    setIsDeletingMulti(true);
+    try {
+      await Promise.all(selected.map(id => deleteMaison(id)));
+      setSelected([]);
+      setDeleteMultiOpen(false);
+    } finally {
+      setIsDeletingMulti(false);
+    }
+  };
 
   const handleEdit = (maison) => {
     setEditMaison(maison);
@@ -475,6 +493,17 @@ export default function AdminMaisons() {
         </CardContent>
       </Card>
 
+      {/* Barre actions groupées */}
+      {selected.length > 0 && (
+        <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+          <span className="text-sm font-medium text-red-800">{selected.length} sélectionnée(s)</span>
+          <Button size="sm" variant="destructive" onClick={() => setDeleteMultiOpen(true)}>
+            <Trash2 className="h-3.5 w-3.5 mr-1" />Supprimer la sélection
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setSelected([])}>Annuler</Button>
+        </div>
+      )}
+
       {/* Table */}
       <Card>
         <CardContent className="p-0">
@@ -500,6 +529,12 @@ export default function AdminMaisons() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
+                      <TableHead className="w-10">
+                        <Checkbox
+                          checked={maisons.length > 0 && selected.length === maisons.length}
+                          onCheckedChange={toggleAll}
+                        />
+                      </TableHead>
                       <TableHead>Maison</TableHead>
                       <TableHead className="hidden sm:table-cell">Localisation</TableHead>
                       <TableHead className="hidden sm:table-cell">Locataire</TableHead>
@@ -513,7 +548,13 @@ export default function AdminMaisons() {
                     {maisons.map((maison) => {
                       const mainImg = getImageUrl(maison.image_principale);
                       return (
-                        <TableRow key={maison.id}>
+                        <TableRow key={maison.id} className={selected.includes(maison.id) ? 'bg-red-50' : ''}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selected.includes(maison.id)}
+                              onCheckedChange={() => toggleSelect(maison.id)}
+                            />
+                          </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted flex-shrink-0">
@@ -535,7 +576,7 @@ export default function AdminMaisons() {
                             {maison.commune}{maison.quartier ? `, ${maison.quartier}` : ''}
                           </TableCell>
                           <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
-                            {rentalByMaison.get(maison.id)?.[0]?.locataire_nom || '-'}
+                            {locataireByMaison.get(maison.id) || '-'}
                           </TableCell>
                           <TableCell className="font-semibold text-sm text-navy-800">
                             {formatCurrency(maison.prix)}
@@ -618,6 +659,16 @@ export default function AdminMaisons() {
         confirmLabel="Supprimer"
         onConfirm={handleDelete}
         isLoading={isDeleting}
+        variant="destructive"
+      />
+      <ConfirmDialog
+        open={deleteMultiOpen}
+        onOpenChange={setDeleteMultiOpen}
+        title={`Supprimer ${selected.length} maison(s)`}
+        description="Cette action est irréversible. Les maisons sélectionnées seront définitivement supprimées."
+        confirmLabel="Supprimer"
+        onConfirm={handleDeleteMulti}
+        isLoading={isDeletingMulti}
         variant="destructive"
       />
     </div>

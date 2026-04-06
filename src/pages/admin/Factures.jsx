@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Plus, Calculator, FileText, Download, AlertCircle, Home, Users, Gauge, Trash2, History, ChevronDown, ChevronUp, MessageCircle, Filter, Droplets, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -891,6 +892,9 @@ export default function AdminFactures() {
   const [filterAnnee, setFilterAnnee] = useState('');
   const [page, setPage] = useState(1);
   const [deleteId, setDeleteId] = useState(null);
+  const [selected, setSelected] = useState([]);
+  const [deleteMultiOpen, setDeleteMultiOpen] = useState(false);
+  const [isDeletingMulti, setIsDeletingMulti] = useState(false);
 
   const { mois: currentMois, annee: currentAnnee } = getCurrentMoisAnnee();
   const { mutate: deleteFacture, isPending: isDeleting } = useDeleteFacture();
@@ -949,6 +953,20 @@ export default function AdminFactures() {
   const factures = filteredFactures.slice((page - 1) * 20, page * 20);
 
   const ANNEES = Array.from({ length: 10 }, (_, i) => String(2026 + i));
+
+  const toggleSelect = (id) => setSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  const toggleAll = () => selected.length === factures.length ? setSelected([]) : setSelected(factures.map(f => f.id));
+
+  const handleDeleteMulti = async () => {
+    setIsDeletingMulti(true);
+    try {
+      await Promise.all(selected.map(id => deleteFacture(id)));
+      setSelected([]);
+      setDeleteMultiOpen(false);
+    } finally {
+      setIsDeletingMulti(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -1049,6 +1067,17 @@ export default function AdminFactures() {
         </CardContent>
       </Card>
 
+      {/* Barre actions groupées */}
+      {selected.length > 0 && (
+        <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+          <span className="text-sm font-medium text-red-800">{selected.length} sélectionnée(s)</span>
+          <Button size="sm" variant="destructive" onClick={() => setDeleteMultiOpen(true)}>
+            <Trash2 className="h-3.5 w-3.5 mr-1" />Supprimer la sélection
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setSelected([])}>Annuler</Button>
+        </div>
+      )}
+
       {/* Table */}
       <Card>
         <CardContent className="p-0">
@@ -1074,6 +1103,12 @@ export default function AdminFactures() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/40">
+                      <TableHead className="w-10">
+                        <Checkbox
+                          checked={factures.length > 0 && selected.length === factures.length}
+                          onCheckedChange={toggleAll}
+                        />
+                      </TableHead>
                       <TableHead className="text-xs font-semibold">Période</TableHead>
                       <TableHead className="text-xs font-semibold">Locataire</TableHead>
                       <TableHead className="text-xs font-semibold hidden md:table-cell">Conso.</TableHead>
@@ -1087,7 +1122,13 @@ export default function AdminFactures() {
                     {factures.map((f) => {
                       const effectiveStatut = getEffectiveStatut(f);
                       return (
-                        <TableRow key={f.id} className="hover:bg-muted/20 transition-colors">
+                        <TableRow key={f.id} className={`hover:bg-muted/20 transition-colors ${selected.includes(f.id) ? 'bg-red-50' : ''}`}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selected.includes(f.id)}
+                              onCheckedChange={() => toggleSelect(f.id)}
+                            />
+                          </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
@@ -1187,6 +1228,16 @@ export default function AdminFactures() {
         confirmLabel="Supprimer"
         onConfirm={() => deleteFacture(deleteId, { onSuccess: () => setDeleteId(null) })}
         isLoading={isDeleting}
+        variant="destructive"
+      />
+      <ConfirmDialog
+        open={deleteMultiOpen}
+        onOpenChange={setDeleteMultiOpen}
+        title={`Supprimer ${selected.length} facture(s)`}
+        description="Cette action est irréversible. Les factures sélectionnées seront définitivement supprimées."
+        confirmLabel="Supprimer"
+        onConfirm={handleDeleteMulti}
+        isLoading={isDeletingMulti}
         variant="destructive"
       />
     </div>
