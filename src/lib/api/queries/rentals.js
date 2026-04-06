@@ -45,16 +45,20 @@ export const useCreateLocation = () => {
     },
     onError: (error) => {
       const data = error.response?.data;
-      if (data?.errors) {
-        Object.values(data.errors).flat().forEach(m => toast.error(m));
-      } else if (data && typeof data === 'object' && !data.message) {
-        // DRF renvoie parfois {champ: ["erreur"]} directement
-        Object.entries(data).forEach(([k, v]) => {
-          const msgs = Array.isArray(v) ? v : [v];
+      console.error('[createLocation] 400 payload:', data);
+      if (!data) { toast.error('Erreur réseau'); return; }
+      if (data.detail) { toast.error(data.detail); return; }
+      if (data.message) { toast.error(data.message); return; }
+      // DRF renvoie {champ: ["erreur"]} ou {errors: {champ: [...]}}
+      const src = data.errors || data;
+      const entries = Object.entries(src);
+      if (entries.length > 0) {
+        entries.forEach(([k, v]) => {
+          const msgs = Array.isArray(v) ? v : [String(v)];
           msgs.forEach(m => toast.error(`${k} : ${m}`));
         });
       } else {
-        toast.error(data?.message || data?.detail || 'Erreur lors de la création de la location');
+        toast.error('Erreur de validation (voir console)');
       }
     },
   });

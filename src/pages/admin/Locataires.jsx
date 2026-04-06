@@ -27,7 +27,7 @@ import EmptyState from '@/components/common/EmptyState';
 import { useUsers, useCreateUser, useUpdateUserStatus, useDeleteUser, useUpdateUser } from '@/lib/api/queries/users';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { useMaisons } from '@/lib/api/queries/properties';
-import { useCreateLocation } from '@/lib/api/queries/rentals';
+import { useCreateLocation, useLocationsActives } from '@/lib/api/queries/rentals';
 import { useEnvoyerNotifTousLocataires, useEnvoyerNotification } from '@/lib/api/queries/notifications';
 import { cleanPhoneForWhatsApp } from '@/lib/utils/whatsapp';
 import { toast } from 'sonner';
@@ -158,7 +158,7 @@ function CreateLocataireDialog({ open, onOpenChange }) {
         const userId = res.data?.data?.id || res.data?.id;
         if (maisonId && userId && dateDebut && loyer) {
           createLocation(buildLocationPayload({ locataireId: userId, maisonId, dateDebut, dureeMois, loyer, caution }), {
-            onSettled: () => { resetForm(); onOpenChange(false); },
+            onSuccess: () => { resetForm(); onOpenChange(false); },
           });
         } else {
           resetForm(); onOpenChange(false);
@@ -478,7 +478,7 @@ function EditLocataireDialog({ open, onOpenChange, locataire, rental }) {
         if (!hasActiveRental && maisonId && dateDebut && loyer) {
           createLocation(
             buildLocationPayload({ locataireId: locataire.id, maisonId, dateDebut, dureeMois, loyer, caution }),
-            { onSettled: handleClose }
+            { onSuccess: handleClose }
           );
         } else {
           handleClose();
@@ -668,6 +668,7 @@ const [deleteId, setDeleteId] = useState(null);
   const activeAnnee = filterAnnee || String(currentAnnee);
 
   const { data, isLoading } = useUsers({ role: 'LOCATAIRE', search: search || undefined, page, page_size: 20 });
+  const { data: rentalsData } = useLocationsActives();
   const { mutate: updateStatus } = useUpdateUserStatus();
   const { mutate: deleteUser, isPending: isDeleting } = useDeleteUser();
 
@@ -682,9 +683,24 @@ const [deleteId, setDeleteId] = useState(null);
   const total = data?.count || data?.data?.count || 0;
   const totalPages = data?.total_pages || Math.ceil(total / 20);
 
-  // Le backend inclut location_active directement dans l'objet user (comme dans LocataireDetail)
-  // Pas besoin de /rentals/actives/ — on utilise loc.location_active || loc.location
-  const getLocationForLocataire = (loc) => loc.location_active || loc.location || null;
+  // Map locataire id → rental depuis /rentals/actives/
+  const rentalsByLocataire = useMemo(() => {
+    const raw = rentalsData;
+    const list = Array.isArray(raw) ? raw
+      : (raw?.data?.results || raw?.results || raw?.data || []);
+    const map = new Map();
+    if (Array.isArray(list)) {
+      list.forEach(r => {
+        const locId = r.locataire?.id ?? r.locataire_id ?? r.locataire;
+        if (locId != null) map.set(String(locId), r);
+      });
+    }
+    return map;
+  }, [rentalsData]);
+
+  // Combine: location embarquée dans l'objet user (detail endpoint) OU depuis /rentals/actives/
+  const getLocationForLocataire = (loc) =>
+    loc?.location_active || loc?.location || rentalsByLocataire.get(String(loc?.id)) || null;
 
   // Build payment status map per locataire from REAL facture data
   const paymentStatusMap = useMemo(() => {
