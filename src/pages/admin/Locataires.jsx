@@ -27,7 +27,7 @@ import EmptyState from '@/components/common/EmptyState';
 import { useUsers, useUser, useCreateUser, useUpdateUserStatus, useDeleteUser, useUpdateUser } from '@/lib/api/queries/users';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { useMaisons } from '@/lib/api/queries/properties';
-import { useCreateLocation, useLocationsActives } from '@/lib/api/queries/rentals';
+import { useCreateLocation } from '@/lib/api/queries/rentals';
 import { useEnvoyerNotifTousLocataires, useEnvoyerNotification } from '@/lib/api/queries/notifications';
 import { cleanPhoneForWhatsApp } from '@/lib/utils/whatsapp';
 import { toast } from 'sonner';
@@ -672,7 +672,6 @@ const [deleteId, setDeleteId] = useState(null);
   const activeAnnee = filterAnnee || String(currentAnnee);
 
   const { data, isLoading } = useUsers({ role: 'LOCATAIRE', search: search || undefined, page, page_size: 20 });
-  const { data: rentalsData } = useLocationsActives();
   const { mutate: updateStatus } = useUpdateUserStatus();
   const { mutate: deleteUser, isPending: isDeleting } = useDeleteUser();
 
@@ -687,24 +686,8 @@ const [deleteId, setDeleteId] = useState(null);
   const total = data?.count || data?.data?.count || 0;
   const totalPages = data?.total_pages || Math.ceil(total / 20);
 
-  // Map locataire id → rental depuis /rentals/actives/
-  const rentalsByLocataire = useMemo(() => {
-    const raw = rentalsData;
-    const list = Array.isArray(raw) ? raw
-      : (raw?.data?.results || raw?.results || raw?.data || []);
-    const map = new Map();
-    if (Array.isArray(list)) {
-      list.forEach(r => {
-        const locId = r.locataire?.id ?? r.locataire_id ?? r.locataire;
-        if (locId != null) map.set(String(locId), r);
-      });
-    }
-    return map;
-  }, [rentalsData]);
-
-  // Combine: location embarquée dans l'objet user (detail endpoint) OU depuis /rentals/actives/
-  const getLocationForLocataire = (loc) =>
-    loc?.location_active || loc?.location || rentalsByLocataire.get(String(loc?.id)) || null;
+  // location_active est maintenant inclus directement dans chaque user (réponse liste)
+  const getLocationForLocataire = (loc) => loc?.location_active || null;
 
   // Build payment status map per locataire from REAL facture data
   const paymentStatusMap = useMemo(() => {
@@ -782,8 +765,7 @@ const [deleteId, setDeleteId] = useState(null);
     const mLabel = MOIS.find(m => m.value === activeMois)?.label || activeMois;
     const headers = ['Nom', 'Prenom', 'Email', 'Telephone', 'Maison', 'Statut', 'Mois', 'Annee', 'Loyer', 'Date paiement loyer', 'SODECI', 'Date paiement SODECI'];
     const rows = filteredLocataires.map(loc => {
-      const rental = getLocationForLocataire(loc);
-      const maisonName = rental?.maison?.titre || rental?.maison?.nom || rental?.maison_titre || rental?.maison_nom || '-';
+      const maisonName = loc.location_active?.maison?.titre || loc.location_active?.maison?.nom || '-';
       const loyerF = loyersFactures.find(f => (f.locataire || f.locataire_id) === loc.id);
       const sodeciF = sodeciFactures.find(f => (f.locataire || f.locataire_id) === loc.id);
       return [
@@ -918,12 +900,9 @@ const [deleteId, setDeleteId] = useState(null);
                   </TableHeader>
                   <TableBody>
                     {filteredLocataires.map((loc) => {
-                      const rental = getLocationForLocataire(loc);
-                      const maisonName = rental?.maison?.titre
-                        || rental?.maison?.nom
-                        || rental?.maison_titre
-                        || rental?.maison_nom
-                        || '-';
+                      const maisonName = loc.location_active?.maison?.titre
+                        || loc.location_active?.maison?.nom
+                        || '—';
                       return (
                         <TableRow key={loc.id}>
                           <TableCell><Checkbox checked={selected.includes(loc.id)} onCheckedChange={() => toggleSelect(loc.id)} /></TableCell>
@@ -987,7 +966,7 @@ const [deleteId, setDeleteId] = useState(null);
 
       <CreateLocataireDialog open={createOpen} onOpenChange={setCreateOpen} />
       <NotifDialog open={notifOpen} onOpenChange={setNotifOpen} selectedIds={selected} locataires={locataires} />
-<EditLocataireDialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) setEditLocataire(null); }} locataire={editLocataire} rental={editLocataire ? getLocationForLocataire(editLocataire) : null} />
+<EditLocataireDialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if (!v) setEditLocataire(null); }} locataire={editLocataire} rental={editLocataire?.location_active || null} />
       <StatutValidationDialog
         open={statutValidOpen}
         onOpenChange={setStatutValidOpen}
