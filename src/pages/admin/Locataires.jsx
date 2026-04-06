@@ -109,12 +109,12 @@ function MaisonFields({ maisonId, setMaisonId, dateDebut, setDateDebut, dureeMoi
 
 function buildLocationPayload({ locataireId, maisonId, dateDebut, dureeMois, loyer, caution }) {
   return {
-    locataire: Number(locataireId),
+    locataire: locataireId,        // UUID — ne pas convertir en Number
     maison: Number(maisonId),
     date_debut: dateDebut,
     duree_mois: Number(dureeMois) || 12,
     loyer_mensuel: Number(loyer),
-    caution: Number(caution) || 0,
+    caution_versee: Number(caution) || 0,  // nom exact du champ backend
     avance_loyer_mois: 0,
     frais_agence: 0,
     charges_mensuelles: 0,
@@ -684,7 +684,6 @@ const [deleteId, setDeleteId] = useState(null);
   const sodeciFactures = sodeciFacturesData?.results || sodeciFacturesData?.data?.results || sodeciFacturesData?.data || [];
 
   const locataires = data?.results || data?.data?.results || data?.data || [];
-  if (locataires.length > 0) console.log('[DEBUG] locataire[0]:', JSON.stringify(locataires[0]));
   const total = data?.count || data?.data?.count || 0;
   const totalPages = data?.total_pages || Math.ceil(total / 20);
 
