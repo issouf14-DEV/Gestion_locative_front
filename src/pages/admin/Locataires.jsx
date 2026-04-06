@@ -684,6 +684,7 @@ const [deleteId, setDeleteId] = useState(null);
   const sodeciFactures = sodeciFacturesData?.results || sodeciFacturesData?.data?.results || sodeciFacturesData?.data || [];
 
   const locataires = data?.results || data?.data?.results || data?.data || [];
+  if (locataires.length > 0) console.log('[DEBUG] locataire[0]:', JSON.stringify(locataires[0]));
   const total = data?.count || data?.data?.count || 0;
   const totalPages = data?.total_pages || Math.ceil(total / 20);
 
