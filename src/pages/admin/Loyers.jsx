@@ -420,10 +420,10 @@ export default function AdminLoyers() {
               size="sm"
               className="col-span-2 w-full sm:w-auto h-9 text-xs"
               onClick={handleGenererLoyers}
-              disabled={genererLoyersMutation.isPending}
+              loading={genererLoyersMutation.isPending}
             >
               <Banknote className="h-3.5 w-3.5 mr-1" />
-              {genererLoyersMutation.isPending ? 'Generation...' : 'Generer loyers'}
+              Générer loyers
             </Button>
           </div>
         </CardContent>
@@ -462,9 +462,9 @@ export default function AdminLoyers() {
               title={filterStatut ? 'Aucun loyer avec ce statut' : 'Aucun loyer ce mois'}
               description={filterStatut ? 'Essayez un autre filtre.' : 'Generez les factures de loyer pour cette periode.'}
               action={!filterStatut && (
-                <Button variant="navy" size="sm" onClick={handleGenererLoyers} disabled={genererLoyersMutation.isPending}>
+                <Button variant="navy" size="sm" onClick={handleGenererLoyers} loading={genererLoyersMutation.isPending}>
                   <Banknote className="h-4 w-4 mr-1" />
-                  {genererLoyersMutation.isPending ? 'Generation...' : 'Generer les loyers'}
+                  Générer les loyers
                 </Button>
               )}
               className="py-12"

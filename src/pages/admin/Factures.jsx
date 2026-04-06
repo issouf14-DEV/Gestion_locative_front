@@ -735,8 +735,8 @@ function GenerationDialog({ open, onOpenChange }) {
           ) : (
             <>
               <Button type="button" variant="outline" onClick={() => setStep('form')}>Modifier</Button>
-              <Button type="button" variant="navy" onClick={handleValiderEnvoyer} disabled={isPending}>
-                {isPending ? 'Génération en cours...' : 'Valider et générer les factures'}
+              <Button type="button" variant="navy" onClick={handleValiderEnvoyer} loading={isPending}>
+                Valider et générer les factures
               </Button>
             </>
           )}

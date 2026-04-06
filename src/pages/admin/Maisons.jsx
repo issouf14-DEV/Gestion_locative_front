@@ -342,8 +342,8 @@ function MaisonForm({ maison, open, onOpenChange }) {
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Annuler
             </Button>
-            <Button type="submit" variant="navy" disabled={isCreating || isUpdating}>
-              {(isCreating || isUpdating) ? 'Enregistrement...' : isEdit ? 'Enregistrer' : 'Créer'}
+            <Button type="submit" variant="navy" loading={isCreating || isUpdating}>
+              {isEdit ? 'Enregistrer' : 'Créer'}
             </Button>
           </DialogFooter>
         </form>

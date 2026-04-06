@@ -333,8 +333,8 @@ function DepenseForm({ depense, open, onOpenChange }) {
           </div>
           <DialogFooter className="mt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
-            <Button type="submit" variant="navy" disabled={isCreating || isUpdating}>
-              {isCreating || isUpdating ? 'Enregistrement...' : isEdit ? 'Modifier' : 'Ajouter'}
+            <Button type="submit" variant="navy" loading={isCreating || isUpdating}>
+              {isEdit ? 'Modifier' : 'Ajouter'}
             </Button>
           </DialogFooter>
         </form>

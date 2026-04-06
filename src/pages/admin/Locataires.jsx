@@ -223,7 +223,7 @@ function CreateLocataireDialog({ open, onOpenChange }) {
           </div>
           <DialogFooter className="mt-4">
             <Button type="button" variant="outline" onClick={() => { resetForm(); onOpenChange(false); }}>Annuler</Button>
-            <Button type="submit" variant="navy" disabled={isPending}>{isPending ? 'Création...' : 'Créer le locataire'}</Button>
+            <Button type="submit" variant="navy" loading={isPending}>Créer le locataire</Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -435,7 +435,7 @@ function NotifDialog({ open, onOpenChange, selectedIds, locataires }) {
           </div>
           <DialogFooter className="mt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
-            <Button type="submit" variant="navy" disabled={isSendingAll || isSendingSingle}>{(isSendingAll || isSendingSingle) ? 'Envoi...' : 'Envoyer'}</Button>
+            <Button type="submit" variant="navy" loading={isSendingAll || isSendingSingle}>Envoyer</Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -518,7 +518,7 @@ function EditLocataireDialog({ open, onOpenChange, locataire, rental }) {
           </div>
           <DialogFooter className="mt-4">
             <Button type="button" variant="outline" onClick={handleClose}>Annuler</Button>
-            <Button type="submit" variant="navy" disabled={isPending}>{isPending ? 'Enregistrement...' : 'Enregistrer'}</Button>
+            <Button type="submit" variant="navy" loading={isPending}>Enregistrer</Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -637,8 +637,8 @@ function StatutValidationDialog({ open, onOpenChange, locataire, mois, annee }) 
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
-          <Button type="button" variant="navy" onClick={handleConfirm} disabled={isPending || (!loyer && !sodeci)}>
-            {isPending ? 'Enregistrement...' : 'Confirmer'}
+          <Button type="button" variant="navy" onClick={handleConfirm} loading={isPending} disabled={isPending || (!loyer && !sodeci)}>
+            Confirmer
           </Button>
         </DialogFooter>
       </DialogContent>
