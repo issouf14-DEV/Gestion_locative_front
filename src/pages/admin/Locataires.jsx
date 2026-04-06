@@ -118,6 +118,7 @@ function buildLocationPayload({ locataireId, maisonId, dateDebut, dureeMois, loy
     avance_loyer_mois: 0,
     frais_agence: 0,
     charges_mensuelles: 0,
+    force_reassignation: true,
   };
 }
 
