@@ -109,8 +109,8 @@ function MaisonFields({ maisonId, setMaisonId, dateDebut, setDateDebut, dureeMoi
 
 function buildLocationPayload({ locataireId, maisonId, dateDebut, dureeMois, loyer, caution }) {
   return {
-    locataire: locataireId,        // UUID — ne pas convertir en Number
-    maison: Number(maisonId),
+    locataire: locataireId,   // UUID — ne pas convertir
+    maison: maisonId,         // UUID — ne pas convertir
     date_debut: dateDebut,
     duree_mois: Number(dureeMois) || 12,
     loyer_mensuel: Number(loyer),
