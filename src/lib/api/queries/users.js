@@ -31,6 +31,7 @@ export const useUser = (id) => {
     queryKey: ['users', id],
     queryFn: () => api.get(USERS.BY_ID(id)).then(r => r.data),
     enabled: !!id,
+    staleTime: 0,
   });
 };
 

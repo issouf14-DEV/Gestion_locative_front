@@ -45,21 +45,21 @@ export const useCreateLocation = () => {
     },
     onError: (error) => {
       const data = error.response?.data;
-      console.error('[createLocation] 400 payload:', data);
+      console.error('[createLocation] 400 payload:', JSON.stringify(data));
       if (!data) { toast.error('Erreur réseau'); return; }
-      if (data.detail) { toast.error(data.detail); return; }
-      if (data.message) { toast.error(data.message); return; }
-      // DRF renvoie {champ: ["erreur"]} ou {errors: {champ: [...]}}
-      const src = data.errors || data;
-      const entries = Object.entries(src);
-      if (entries.length > 0) {
-        entries.forEach(([k, v]) => {
-          const msgs = Array.isArray(v) ? v : [String(v)];
-          msgs.forEach(m => toast.error(`${k} : ${m}`));
-        });
-      } else {
-        toast.error('Erreur de validation (voir console)');
+      // Cherche les erreurs dans details, errors, ou directement dans data
+      const src = data.details || data.errors || (typeof data === 'object' && !data.message && !data.detail ? data : null);
+      if (src && typeof src === 'object') {
+        const entries = Object.entries(src).filter(([k]) => !['error', 'message', 'detail'].includes(k));
+        if (entries.length > 0) {
+          entries.forEach(([k, v]) => {
+            const msgs = Array.isArray(v) ? v : [String(v)];
+            msgs.forEach(m => toast.error(`${k} : ${m}`));
+          });
+          return;
+        }
       }
+      toast.error(data?.detail || data?.message || 'Erreur de validation');
     },
   });
 };

@@ -24,7 +24,7 @@ import PageHeader from '@/components/common/PageHeader';
 import StatCard from '@/components/common/StatCard';
 import PasswordInput from '@/components/common/PasswordInput';
 import EmptyState from '@/components/common/EmptyState';
-import { useUsers, useCreateUser, useUpdateUserStatus, useDeleteUser, useUpdateUser } from '@/lib/api/queries/users';
+import { useUsers, useUser, useCreateUser, useUpdateUserStatus, useDeleteUser, useUpdateUser } from '@/lib/api/queries/users';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { useMaisons } from '@/lib/api/queries/properties';
 import { useCreateLocation, useLocationsActives } from '@/lib/api/queries/rentals';
@@ -449,6 +449,9 @@ function EditLocataireDialog({ open, onOpenChange, locataire, rental }) {
   const { mutate: updateUser, isPending: isUpdating } = useUpdateUser();
   const { mutate: createLocation, isPending: isCreatingLoc } = useCreateLocation();
   const { data: maisonsData } = useMaisons({ statut: 'DISPONIBLE' });
+  // Fetch les données fraîches du locataire pour avoir location_active à jour
+  const { data: freshUserData } = useUser(open && locataire?.id ? locataire.id : null);
+  const freshUser = freshUserData?.data || freshUserData;
   const maisons = Array.isArray(maisonsData)
     ? maisonsData
     : (maisonsData?.data?.results || maisonsData?.results || maisonsData?.data || []);
@@ -461,10 +464,10 @@ function EditLocataireDialog({ open, onOpenChange, locataire, rental }) {
 
   const isPending = isUpdating || isCreatingLoc;
 
-  // Présence d'une location active (indépendamment du format retourné par l'API)
-  const hasActiveRental = !!rental;
-
-  const currentMaisonNom = rental?.maison?.titre || rental?.maison?.nom || rental?.maison_titre || null;
+  // Utilise les données fraîches si disponibles, sinon fallback sur le prop rental
+  const activeRental = freshUser?.location_active || freshUser?.location || rental || null;
+  const hasActiveRental = !!activeRental;
+  const currentMaisonNom = activeRental?.maison?.titre || activeRental?.maison?.nom || activeRental?.maison_titre || null;
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm({
     resolver: zodResolver(editLocataireSchema),
