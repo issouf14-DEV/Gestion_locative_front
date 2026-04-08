@@ -370,11 +370,15 @@ export default function AdminMaisons() {
   const { mutate: deleteMaison, isPending: isDeleting } = useDeleteMaison();
   const { data: locatairesData } = useUsers({ role: 'LOCATAIRE', page_size: 100 });
   const locataires = locatairesData?.results || locatairesData?.data?.results || locatairesData?.data || [];
-  // Build map: maison.id -> locataire nom, using location_active embedded in each user
+  // Build map: maison UUID -> locataire nom
+  // location_active.maison peut être un objet {id, titre} OU un UUID string selon le sérialiseur
   const locataireByMaison = new Map();
   locataires.forEach(loc => {
-    const maisonId = loc.location_active?.maison?.id;
-    if (maisonId) locataireByMaison.set(maisonId, `${loc.prenoms || ''} ${loc.nom || ''}`.trim());
+    const la = loc.location_active;
+    if (!la) return;
+    const nom = `${loc.prenoms || ''} ${loc.nom || ''}`.trim();
+    const maisonId = typeof la.maison === 'object' ? la.maison?.id : (la.maison_id || la.maison);
+    if (maisonId) locataireByMaison.set(maisonId, nom);
   });
   
   

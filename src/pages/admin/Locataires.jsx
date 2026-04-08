@@ -677,6 +677,15 @@ export default function AdminLocataires() {
   const { mutate: updateStatus } = useUpdateUserStatus();
   const { mutate: deleteUser, isPending: isDeleting } = useDeleteUser();
 
+  // Charger toutes les maisons pour résoudre le nom à partir d'un UUID
+  const { data: allMaisonsData } = useMaisons({ page_size: 200 });
+  const allMaisons = allMaisonsData?.data?.results || allMaisonsData?.results || allMaisonsData?.data || [];
+  const maisonTitreById = useMemo(() => {
+    const m = new Map();
+    allMaisons.forEach(ma => m.set(ma.id, ma.titre || ma.nom || ''));
+    return m;
+  }, [allMaisons]);
+
   // Fetch factures for selected month to determine payment status
   const { data: loyersFacturesData } = useFactures({ type_facture: 'LOYER', mois: Number(activeMois), annee: Number(activeAnnee), page_size: 100 });
   const { data: sodeciFacturesData } = useFactures({ type_facture: 'SODECI', mois: Number(activeMois), annee: Number(activeAnnee), page_size: 100 });
@@ -915,8 +924,12 @@ export default function AdminLocataires() {
                   </TableHeader>
                   <TableBody>
                     {filteredLocataires.map((loc) => {
-                      const maisonName = loc.location_active?.maison?.titre
-                        || loc.location_active?.maison?.nom
+                      const la = loc.location_active;
+                      const maisonObj = la?.maison;
+                      const maisonName = (typeof maisonObj === 'object' && maisonObj !== null
+                        ? maisonObj.titre || maisonObj.nom
+                        : maisonTitreById.get(maisonObj))
+                        || (la ? maisonTitreById.get(la.maison_id) : null)
                         || '—';
                       return (
                         <TableRow key={loc.id}>
