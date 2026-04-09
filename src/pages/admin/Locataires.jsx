@@ -66,11 +66,18 @@ const editLocataireSchema = z.object({
 
 // Champs maison partagés entre Create et Edit
 function MaisonFields({ maisonId, setMaisonId, dateDebut, setDateDebut, dureeMois, setDureeMois, loyer, setLoyer, caution, setCaution, maisons }) {
+  const handleMaisonChange = (id) => {
+    setMaisonId(id);
+    // Pré-remplir le loyer depuis le prix de la maison
+    const m = maisons.find(m => String(m.id) === String(id));
+    if (m?.prix) setLoyer(String(m.prix));
+  };
+
   return (
     <div className="space-y-3">
       <div className="space-y-1">
         <Label>Maison disponible</Label>
-        <Select value={maisonId} onValueChange={setMaisonId}>
+        <Select value={maisonId} onValueChange={handleMaisonChange}>
           <SelectTrigger><SelectValue placeholder="Sélectionner une maison..." /></SelectTrigger>
           <SelectContent>
             {maisons.map(m => (
@@ -125,13 +132,13 @@ function buildLocationPayload({ locataireId, maisonId, dateDebut, dureeMois, loy
 function CreateLocataireDialog({ open, onOpenChange }) {
   const { mutate: createUser, isPending } = useCreateUser();
   const { data: maisonsData } = useMaisons({ statut: 'DISPONIBLE' });
-  const { mutate: createLocation } = useCreateLocation();
+  const { mutate: createLocation, isPending: isCreatingLoc } = useCreateLocation();
   const maisons = Array.isArray(maisonsData)
     ? maisonsData
     : (maisonsData?.data?.results || maisonsData?.results || maisonsData?.data || []);
 
   const [maisonId, setMaisonId] = useState('');
-  const [dateDebut, setDateDebut] = useState('');
+  const [dateDebut, setDateDebut] = useState(new Date().toISOString().substring(0, 10));
   const [dureeMois, setDureeMois] = useState('12');
   const [loyer, setLoyer] = useState('');
   const [caution, setCaution] = useState('');
@@ -143,7 +150,11 @@ function CreateLocataireDialog({ open, onOpenChange }) {
 
   const resetForm = () => {
     reset();
-    setMaisonId(''); setDateDebut(''); setDureeMois('12'); setLoyer(''); setCaution('');
+    setMaisonId('');
+    setDateDebut(new Date().toISOString().substring(0, 10));
+    setDureeMois('12');
+    setLoyer('');
+    setCaution('');
   };
 
   const onSubmit = (data) => {
@@ -156,13 +167,29 @@ function CreateLocataireDialog({ open, onOpenChange }) {
     };
     createUser(payload, {
       onSuccess: (res) => {
-        const userId = res.data?.data?.id || res.data?.id;
-        if (maisonId && userId && dateDebut && loyer) {
-          createLocation(buildLocationPayload({ locataireId: userId, maisonId, dateDebut, dureeMois, loyer, caution }), {
-            onSuccess: () => { resetForm(); onOpenChange(false); },
-          });
+        // Extraire l'ID peu importe la structure de réponse
+        const userId =
+          res?.data?.data?.id || res?.data?.id || res?.id ||
+          res?.data?.data?.uuid || res?.data?.uuid;
+
+        if (maisonId && userId) {
+          const effectiveLoyer = loyer || maisons.find(m => String(m.id) === String(maisonId))?.prix || '0';
+          const effectiveDate = dateDebut || new Date().toISOString().substring(0, 10);
+          createLocation(
+            buildLocationPayload({ locataireId: userId, maisonId, dateDebut: effectiveDate, dureeMois, loyer: effectiveLoyer, caution }),
+            {
+              onSuccess: () => { resetForm(); onOpenChange(false); },
+              onError: (err) => {
+                // L'utilisateur est créé, juste l'assignation a échoué
+                toast.error('Locataire créé mais assignation maison échouée. Utilisez "Modifier" pour assigner.');
+                resetForm();
+                onOpenChange(false);
+              },
+            }
+          );
         } else {
-          resetForm(); onOpenChange(false);
+          resetForm();
+          onOpenChange(false);
         }
       },
     });
@@ -224,7 +251,9 @@ function CreateLocataireDialog({ open, onOpenChange }) {
           </div>
           <DialogFooter className="mt-4">
             <Button type="button" variant="outline" onClick={() => { resetForm(); onOpenChange(false); }}>Annuler</Button>
-            <Button type="submit" variant="navy" loading={isPending}>Créer le locataire</Button>
+            <Button type="submit" variant="navy" loading={isPending || isCreatingLoc}>
+              {isCreatingLoc ? 'Assignation maison...' : 'Créer le locataire'}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
