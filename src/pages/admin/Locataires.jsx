@@ -24,7 +24,7 @@ import PageHeader from '@/components/common/PageHeader';
 import StatCard from '@/components/common/StatCard';
 import PasswordInput from '@/components/common/PasswordInput';
 import EmptyState from '@/components/common/EmptyState';
-import { useUsers, useUser, useCreateUser, useUpdateUserStatus, useDeleteUser, useUpdateUser } from '@/lib/api/queries/users';
+import { useUsers, useUser, useCreateUser, useDeleteUser, useUpdateUser } from '@/lib/api/queries/users';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { useMaisons } from '@/lib/api/queries/properties';
 import { useCreateLocation } from '@/lib/api/queries/rentals';
@@ -703,17 +703,7 @@ export default function AdminLocataires() {
   const activeAnnee = filterAnnee || String(currentAnnee);
 
   const { data, isLoading } = useUsers({ role: 'LOCATAIRE', search: search || undefined, page, page_size: 20 });
-  const { mutate: updateStatus } = useUpdateUserStatus();
   const { mutate: deleteUser, isPending: isDeleting } = useDeleteUser();
-
-  // Charger toutes les maisons pour résoudre le nom à partir d'un UUID
-  const { data: allMaisonsData } = useMaisons({ page_size: 200 });
-  const allMaisons = allMaisonsData?.data?.results || allMaisonsData?.results || allMaisonsData?.data || [];
-  const maisonTitreById = useMemo(() => {
-    const m = new Map();
-    allMaisons.forEach(ma => m.set(ma.id, ma.titre || ma.nom || ''));
-    return m;
-  }, [allMaisons]);
 
   // Fetch factures for selected month to determine payment status
   const { data: loyersFacturesData } = useFactures({ type_facture: 'LOYER', mois: Number(activeMois), annee: Number(activeAnnee), page_size: 100 });
@@ -725,9 +715,6 @@ export default function AdminLocataires() {
   const locataires = data?.results || data?.data?.results || data?.data || [];
   const total = data?.count || data?.data?.count || 0;
   const totalPages = data?.total_pages || Math.ceil(total / 20);
-
-  // location_active est maintenant inclus directement dans chaque user (réponse liste)
-  const getLocationForLocataire = (loc) => loc?.location_active || null;
 
   // Build payment status map per locataire from REAL facture data
   const paymentStatusMap = useMemo(() => {
@@ -953,13 +940,7 @@ export default function AdminLocataires() {
                   </TableHeader>
                   <TableBody>
                     {filteredLocataires.map((loc) => {
-                      const la = loc.location_active;
-                      const maisonObj = la?.maison;
-                      const maisonName = (typeof maisonObj === 'object' && maisonObj !== null
-                        ? maisonObj.titre || maisonObj.nom
-                        : maisonTitreById.get(maisonObj))
-                        || (la ? maisonTitreById.get(la.maison_id) : null)
-                        || '—';
+                      const maisonName = loc.location_active?.maison?.titre ?? '—';
                       return (
                         <TableRow key={loc.id}>
                           <TableCell><Checkbox checked={selected.includes(loc.id)} onCheckedChange={() => toggleSelect(loc.id)} /></TableCell>

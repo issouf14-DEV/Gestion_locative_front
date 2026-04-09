@@ -15,7 +15,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
 } from '@/components/ui/dialog';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table';
@@ -27,7 +26,6 @@ import {
   useMaisons, useCreateMaison, useUpdateMaison,
   useDeleteMaison, useAjouterImages
 } from '@/lib/api/queries/properties';
-import { useUsers } from '@/lib/api/queries/users';
 import api from '@/lib/api/axios';
 import { PROPERTIES } from '@/lib/api/endpoints';
 import { formatCurrency } from '@/lib/utils/formatters';
@@ -368,18 +366,6 @@ export default function AdminMaisons() {
   // Fetch ALL maisons (no filter) to compute accurate stats
   const { data: allMaisonsData } = useMaisons({ page_size: 200 });
   const { mutate: deleteMaison, isPending: isDeleting } = useDeleteMaison();
-  const { data: locatairesData } = useUsers({ role: 'LOCATAIRE', page_size: 100 });
-  const locataires = locatairesData?.results || locatairesData?.data?.results || locatairesData?.data || [];
-  // Build map: maison UUID -> locataire nom
-  // location_active.maison peut être un objet {id, titre} OU un UUID string selon le sérialiseur
-  const locataireByMaison = new Map();
-  locataires.forEach(loc => {
-    const la = loc.location_active;
-    if (!la) return;
-    const nom = `${loc.prenoms || ''} ${loc.nom || ''}`.trim();
-    const maisonId = typeof la.maison === 'object' ? la.maison?.id : (la.maison_id || la.maison);
-    if (maisonId) locataireByMaison.set(maisonId, nom);
-  });
   
   
   const getImageUrl = (url) => {
@@ -580,7 +566,7 @@ export default function AdminMaisons() {
                             {maison.commune}{maison.quartier ? `, ${maison.quartier}` : ''}
                           </TableCell>
                           <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
-                            {locataireByMaison.get(maison.id) || '-'}
+                            {maison.locataire_actuel?.nom ?? '—'}
                           </TableCell>
                           <TableCell className="font-semibold text-sm text-navy-800">
                             {formatCurrency(maison.prix)}
